@@ -18,9 +18,37 @@ test('books can be hidden and restored persistently', (context) => {
     VALUES ('test', 'one', 'Visible Book', 'An Author', ?, ?)
   `).run(now, now);
   const id = Number(database.prepare('SELECT id FROM books').get().id);
+  database.prepare(`
+    UPDATE books SET title_font_key = 'cinzel', author_font_key = 'inter',
+      title_text_color = '#f1e7d0', author_text_color = '#ffffff', spine_layout = 'inline',
+      title_font_weight = 700, author_font_weight = 500, title_letter_spacing = 0.04,
+      author_letter_spacing = 0.02, title_case = 'uppercase', author_case = 'as-written',
+      typography_confidence = 0.91
+    WHERE id = ?
+  `).run(id);
   database.close();
 
-  assert.equal(listBooks(path).length, 1);
+  const visible = listBooks(path);
+  assert.equal(visible.length, 1);
+  assert.deepEqual({
+    titleFontKey: visible[0].titleFontKey,
+    authorFontKey: visible[0].authorFontKey,
+    titleTextColor: visible[0].titleTextColor,
+    spineLayout: visible[0].spineLayout,
+    titleFontWeight: visible[0].titleFontWeight,
+    titleLetterSpacing: visible[0].titleLetterSpacing,
+    titleCase: visible[0].titleCase,
+    typographyConfidence: visible[0].typographyConfidence,
+  }, {
+    titleFontKey: 'cinzel',
+    authorFontKey: 'inter',
+    titleTextColor: '#f1e7d0',
+    spineLayout: 'inline',
+    titleFontWeight: 700,
+    titleLetterSpacing: 0.04,
+    titleCase: 'uppercase',
+    typographyConfidence: 0.91,
+  });
   assert.equal(hideBook(id, path), 1);
   assert.equal(listBooks(path).length, 0);
   assert.equal(listHiddenBooks(path)[0].title, 'Visible Book');

@@ -6,6 +6,7 @@ data/*.sqlite
 data/*.sqlite-*
 data/*.db
 data/*.db-*
+data/font-cache/
 
 # Local configuration and operating-system files
 .env

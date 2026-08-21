@@ -64,14 +64,31 @@ h1 { margin: 0; font-size: clamp(2rem, 5vw, 4.8rem); line-height: .98; letter-sp
   block-size: 2.2em;
   max-block-size: 2.2em;
   overflow: hidden;
-  font-family: Iowan Old Style, Baskerville, Georgia, serif;
+  max-height: 72%;
+  color: var(--title-color, rgba(255, 249, 237, .92));
+  font-family: var(--title-font, Iowan Old Style, Baskerville, Georgia, serif);
+  font-weight: var(--title-weight, 400);
   font-size: clamp(.86rem, 1.8vw, 1.32rem);
   line-height: 1.08;
+  letter-spacing: var(--title-spacing, 0);
   overflow-wrap: anywhere;
   text-align: center;
 }
 .spine-title.is-single-line { padding-block: .55em; }
-.spine-author { max-height: 35%; overflow: hidden; color: rgba(255,255,255,.72); font-size: clamp(.5rem, .9vw, .68rem); letter-spacing: .09em; text-transform: uppercase; }
+.spine-author {
+  max-height: 28%;
+  overflow: hidden;
+  color: var(--author-color, rgba(255,255,255,.72));
+  font-family: var(--author-font, Inter, system-ui, sans-serif);
+  font-size: clamp(.5rem, .9vw, .68rem);
+  font-weight: var(--author-weight, 500);
+  letter-spacing: var(--author-spacing, .09em);
+}
+.spine--inline { justify-content: center; gap: clamp(7px, 1.6vh, 16px); }
+.spine--inline .spine-author { order: -1; max-height: 24%; }
+.spine--inline .spine-title { max-height: 68%; }
+.title-case-uppercase, .author-case-uppercase { text-transform: uppercase; }
+.title-case-small-caps, .author-case-small-caps { font-variant-caps: all-small-caps; }
 .shelf-board { position: absolute; z-index: 0; right: 1%; bottom: 3.1vh; left: 1%; height: clamp(25px, 3vw, 42px); border-radius: 4px; background: linear-gradient(#6e4227, #3c2316 55%, #21130d); box-shadow: 0 20px 35px rgba(0,0,0,.5), inset 0 2px rgba(255,255,255,.1); }
 
 .nav { position: absolute; z-index: 3; bottom: 43%; width: 46px; height: 64px; border: 0; color: #bea987; background: transparent; font-family: Georgia, serif; font-size: 3rem; cursor: pointer; opacity: .55; }

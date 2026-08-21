@@ -28,7 +28,10 @@ function listBooksWhere(databasePath, predicate) {
   migrate(database);
   const rows = database.prepare(`
     SELECT id, source_id, asin, title, authors, page_count, page_count_source,
-      spine_color, hidden_at
+      spine_color, hidden_at, title_font_key, author_font_key, title_text_color,
+      author_text_color, spine_layout, title_font_weight, author_font_weight,
+      title_letter_spacing, author_letter_spacing, title_case, author_case,
+      typography_confidence
     FROM books
     WHERE title <> '' AND ${predicate}
     ORDER BY title COLLATE NOCASE
@@ -48,6 +51,18 @@ function listBooksWhere(databasePath, predicate) {
       pageCountKnown: book.page_count !== null,
       pageCountSource: book.page_count_source,
       spineColor: book.spine_color,
+      titleFontKey: book.title_font_key,
+      authorFontKey: book.author_font_key,
+      titleTextColor: book.title_text_color,
+      authorTextColor: book.author_text_color,
+      spineLayout: book.spine_layout,
+      titleFontWeight: book.title_font_weight,
+      authorFontWeight: book.author_font_weight,
+      titleLetterSpacing: book.title_letter_spacing,
+      authorLetterSpacing: book.author_letter_spacing,
+      titleCase: book.title_case,
+      authorCase: book.author_case,
+      typographyConfidence: book.typography_confidence,
       hiddenAt: book.hidden_at,
       coverUrl: coverUrl(book.asin),
     };

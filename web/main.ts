@@ -1,3 +1,40 @@
+import '@fontsource-variable/literata';
+import '@fontsource-variable/libre-baskerville';
+import '@fontsource-variable/cormorant-garamond';
+import '@fontsource-variable/bodoni-moda';
+import '@fontsource-variable/cinzel';
+import '@fontsource-variable/roboto-slab';
+import '@fontsource-variable/inter';
+import '@fontsource-variable/montserrat';
+import '@fontsource/barlow-condensed/latin-400.css';
+import '@fontsource/barlow-condensed/latin-ext-400.css';
+import '@fontsource/barlow-condensed/latin-500.css';
+import '@fontsource/barlow-condensed/latin-ext-500.css';
+import '@fontsource/barlow-condensed/latin-600.css';
+import '@fontsource/barlow-condensed/latin-ext-600.css';
+import '@fontsource/barlow-condensed/latin-700.css';
+import '@fontsource/barlow-condensed/latin-ext-700.css';
+import '@fontsource/barlow-condensed/latin-800.css';
+import '@fontsource/barlow-condensed/latin-ext-800.css';
+import '@fontsource/barlow-condensed/latin-900.css';
+import '@fontsource/barlow-condensed/latin-ext-900.css';
+import '@fontsource-variable/oswald';
+import '@fontsource/bebas-neue/latin.css';
+import '@fontsource/bebas-neue/latin-ext.css';
+import '@fontsource/archivo-black/latin.css';
+import '@fontsource/archivo-black/latin-ext.css';
+import '@fontsource/rajdhani/latin-400.css';
+import '@fontsource/rajdhani/latin-ext-400.css';
+import '@fontsource/rajdhani/latin-500.css';
+import '@fontsource/rajdhani/latin-ext-500.css';
+import '@fontsource/rajdhani/latin-600.css';
+import '@fontsource/rajdhani/latin-ext-600.css';
+import '@fontsource/rajdhani/latin-700.css';
+import '@fontsource/rajdhani/latin-ext-700.css';
+import '@fontsource-variable/orbitron';
+import '@fontsource/special-elite/latin.css';
+import '@fontsource/special-elite/latin-ext.css';
+import '@fontsource-variable/caveat';
 import './styles.css';
 
 type Book = {
@@ -9,6 +46,18 @@ type Book = {
   layoutPages: number;
   pageCountKnown: boolean;
   spineColor: string | null;
+  titleFontKey: string | null;
+  authorFontKey: string | null;
+  titleTextColor: string | null;
+  authorTextColor: string | null;
+  spineLayout: 'inline' | 'split' | null;
+  titleFontWeight: number | null;
+  authorFontWeight: number | null;
+  titleLetterSpacing: number | null;
+  authorLetterSpacing: number | null;
+  titleCase: 'as-written' | 'uppercase' | 'small-caps' | null;
+  authorCase: 'as-written' | 'uppercase' | 'small-caps' | null;
+  typographyConfidence: number | null;
   hiddenAt?: string | null;
   coverUrl: string | null;
 };
@@ -28,6 +77,25 @@ const shelfPresentation: ShelfPresentation = {
   eyebrow: 'Unsere Bibliothek',
   title: 'Was wir gerne lesen.',
   showHeading: false,
+};
+
+const FONT_FAMILIES: Record<string, string> = {
+  'literata': 'Literata Variable, Georgia, serif',
+  'libre-baskerville': 'Libre Baskerville Variable, Georgia, serif',
+  'cormorant-garamond': 'Cormorant Garamond Variable, Georgia, serif',
+  'bodoni-moda': 'Bodoni Moda Variable, Didot, Georgia, serif',
+  'cinzel': 'Cinzel Variable, Georgia, serif',
+  'roboto-slab': 'Roboto Slab Variable, Rockwell, Georgia, serif',
+  'inter': 'Inter Variable, Inter, system-ui, sans-serif',
+  'montserrat': 'Montserrat Variable, system-ui, sans-serif',
+  'barlow-condensed': 'Barlow Condensed, Arial Narrow, sans-serif',
+  'oswald': 'Oswald Variable, Arial Narrow, sans-serif',
+  'bebas-neue': 'Bebas Neue, Arial Narrow, sans-serif',
+  'archivo-black': 'Archivo Black, Arial Black, sans-serif',
+  'rajdhani': 'Rajdhani, system-ui, sans-serif',
+  'orbitron': 'Orbitron Variable, system-ui, sans-serif',
+  'special-elite': 'Special Elite, Courier New, monospace',
+  'caveat': 'Caveat Variable, cursive',
 };
 
 const app = document.querySelector<HTMLElement>('#app')!;
@@ -90,6 +158,37 @@ function spineWidth(book: Book) {
   return Math.round(42 + normalized * 56);
 }
 
+function validColor(color: string | null, fallback: string) {
+  return color && /^#[0-9a-f]{6}$/i.test(color) ? color : fallback;
+}
+
+function validWeight(weight: number | null, fallback: number) {
+  return weight && weight >= 400 && weight <= 900 ? weight : fallback;
+}
+
+function validSpacing(spacing: number | null, fallback: number) {
+  return Number.isFinite(spacing) ? Math.max(-0.04, Math.min(0.16, spacing!)) : fallback;
+}
+
+function typographyStyle(book: Book) {
+  const titleFont = FONT_FAMILIES[book.titleFontKey || ''] || 'Iowan Old Style, Baskerville, Georgia, serif';
+  const authorFont = FONT_FAMILIES[book.authorFontKey || ''] || 'Inter, system-ui, sans-serif';
+  return [
+    `--title-font:${titleFont}`,
+    `--author-font:${authorFont}`,
+    `--title-color:${validColor(book.titleTextColor, '#fff9ed')}`,
+    `--author-color:${validColor(book.authorTextColor, '#ffffffb8')}`,
+    `--title-weight:${validWeight(book.titleFontWeight, 400)}`,
+    `--author-weight:${validWeight(book.authorFontWeight, 500)}`,
+    `--title-spacing:${validSpacing(book.titleLetterSpacing, 0)}em`,
+    `--author-spacing:${validSpacing(book.authorLetterSpacing, 0.09)}em`,
+  ].join(';');
+}
+
+function caseClass(prefix: 'title' | 'author', value: Book['titleCase']) {
+  return `${prefix}-case-${value || 'as-written'}`;
+}
+
 function spineTitle(title: string) {
   const withoutEdition = title
     .replace(/\s*\([^)]*(edition|ausgabe|kindle|book\s*\d+|english|deutsch)[^)]*\)\s*/gi, ' ')
@@ -120,14 +219,14 @@ function render() {
         <div class="books" role="list">
           ${current.map((book) => `
             <button
-              class="spine"
+              class="spine spine--${book.spineLayout || 'split'}"
               role="listitem"
               aria-label="${escapeHtml(book.title)} von ${escapeHtml(book.authors)}"
               data-book-id="${book.id}"
-              style="--spine-width:${spineWidth(book)}px;--spine-height:${76 + (hash(book.sourceId) % 20)}%;--spine-color:${spineColor(book)}"
+              style="--spine-width:${spineWidth(book)}px;--spine-height:${76 + (hash(book.sourceId) % 20)}%;--spine-color:${spineColor(book)};${typographyStyle(book)}"
             >
-              <span class="spine-title">${escapeHtml(spineTitle(book.title))}</span>
-              <span class="spine-author">${escapeHtml(book.authors.split(',')[0])}</span>
+              <span class="spine-title ${caseClass('title', book.titleCase)}">${escapeHtml(spineTitle(book.title))}</span>
+              <span class="spine-author ${caseClass('author', book.authorCase)}">${escapeHtml(book.authors.split(',')[0])}</span>
             </button>
           `).join('')}
         </div>

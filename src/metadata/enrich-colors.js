@@ -45,7 +45,7 @@ export function adjustDominantColor(rgb) {
   return `#${[r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
 }
 
-async function analyzeCover(buffer) {
+export async function dominantSpineColor(buffer) {
   const image = sharp(buffer, { failOn: 'warning' });
   const metadata = await image.metadata();
   if ((metadata.width || 0) < 20 || (metadata.height || 0) < 20) return null;
@@ -68,7 +68,7 @@ async function fetchColor(asin) {
     return { color: null, unavailable: true };
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  const color = await analyzeCover(buffer);
+  const color = await dominantSpineColor(buffer);
   return { color, unavailable: color === null };
 }
 

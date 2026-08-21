@@ -35,6 +35,7 @@ import '@fontsource-variable/orbitron';
 import '@fontsource/special-elite/latin.css';
 import '@fontsource/special-elite/latin-ext.css';
 import '@fontsource-variable/caveat';
+import { ensureTextContrast } from '../src/color-contrast.js';
 import './styles.css';
 
 type Book = {
@@ -173,11 +174,16 @@ function validSpacing(spacing: number | null, fallback: number) {
 function typographyStyle(book: Book) {
   const titleFont = FONT_FAMILIES[book.titleFontKey || ''] || 'Iowan Old Style, Baskerville, Georgia, serif';
   const authorFont = FONT_FAMILIES[book.authorFontKey || ''] || 'Inter, system-ui, sans-serif';
+  const background = spineColor(book);
+  const titleContrast = ensureTextContrast(validColor(book.titleTextColor, '#fff9ed'), background);
+  const authorContrast = ensureTextContrast(validColor(book.authorTextColor, '#f3eee6'), background);
   return [
     `--title-font:${titleFont}`,
     `--author-font:${authorFont}`,
-    `--title-color:${validColor(book.titleTextColor, '#fff9ed')}`,
-    `--author-color:${validColor(book.authorTextColor, '#ffffffb8')}`,
+    `--title-color:${titleContrast.color}`,
+    `--author-color:${authorContrast.color}`,
+    `--title-shadow:${titleContrast.shadow}`,
+    `--author-shadow:${authorContrast.shadow}`,
     `--title-weight:${validWeight(book.titleFontWeight, 400)}`,
     `--author-weight:${validWeight(book.authorFontWeight, 500)}`,
     `--title-spacing:${validSpacing(book.titleLetterSpacing, 0)}em`,

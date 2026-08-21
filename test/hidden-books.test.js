@@ -23,7 +23,8 @@ test('books can be hidden and restored persistently', (context) => {
       title_text_color = '#f1e7d0', author_text_color = '#ffffff', spine_layout = 'inline',
       title_font_weight = 700, author_font_weight = 500, title_letter_spacing = 0.04,
       author_letter_spacing = 0.02, title_case = 'uppercase', author_case = 'as-written',
-      typography_confidence = 0.91
+      typography_confidence = 0.91, cover_local_path = '1-openlibrary-123.jpg',
+      cover_source = 'openlibrary', cover_match_confidence = 1.0
     WHERE id = ?
   `).run(id);
   database.close();
@@ -39,6 +40,8 @@ test('books can be hidden and restored persistently', (context) => {
     titleLetterSpacing: visible[0].titleLetterSpacing,
     titleCase: visible[0].titleCase,
     typographyConfidence: visible[0].typographyConfidence,
+    coverUrl: visible[0].coverUrl,
+    coverSource: visible[0].coverSource,
   }, {
     titleFontKey: 'cinzel',
     authorFontKey: 'inter',
@@ -48,6 +51,8 @@ test('books can be hidden and restored persistently', (context) => {
     titleLetterSpacing: 0.04,
     titleCase: 'uppercase',
     typographyConfidence: 0.91,
+    coverUrl: '/covers/1-openlibrary-123.jpg',
+    coverSource: 'openlibrary',
   });
   assert.equal(hideBook(id, path), 1);
   assert.equal(listBooks(path).length, 0);

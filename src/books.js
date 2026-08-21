@@ -23,6 +23,11 @@ export function coverUrl(asin) {
   return `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
 }
 
+export function localCoverUrl(path) {
+  if (!path || !/^[a-zA-Z0-9._-]+$/.test(path)) return null;
+  return `/covers/${encodeURIComponent(path)}`;
+}
+
 function listBooksWhere(databasePath, predicate) {
   const database = openDatabase(databasePath);
   migrate(database);
@@ -31,7 +36,7 @@ function listBooksWhere(databasePath, predicate) {
       spine_color, hidden_at, title_font_key, author_font_key, title_text_color,
       author_text_color, spine_layout, title_font_weight, author_font_weight,
       title_letter_spacing, author_letter_spacing, title_case, author_case,
-      typography_confidence
+      typography_confidence, cover_local_path, cover_source, cover_match_confidence
     FROM books
     WHERE title <> '' AND ${predicate}
     ORDER BY title COLLATE NOCASE
@@ -63,8 +68,10 @@ function listBooksWhere(databasePath, predicate) {
       titleCase: book.title_case,
       authorCase: book.author_case,
       typographyConfidence: book.typography_confidence,
+      coverSource: book.cover_source,
+      coverMatchConfidence: book.cover_match_confidence,
       hiddenAt: book.hidden_at,
-      coverUrl: coverUrl(book.asin),
+      coverUrl: localCoverUrl(book.cover_local_path) || coverUrl(book.asin),
     };
   });
 }

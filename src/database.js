@@ -28,5 +28,8 @@ export function migrate(database) {
   if (version < 5) {
     database.exec(readFileSync(join(projectRoot, 'migrations', '005_book_typography.sql'), 'utf8'));
   }
+  if (version < 6) {
+    database.exec(readFileSync(join(projectRoot, 'migrations', '006_local_covers.sql'), 'utf8'));
+  }
   database.exec('PRAGMA optimize');
 }

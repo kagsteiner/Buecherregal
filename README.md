@@ -15,6 +15,7 @@ npm run db:init
 npm run kindle:import
 npm run metadata:pages
 npm run metadata:colors
+npm run metadata:covers
 npm run metadata:typography
 npm run books:list
 npm run dev
@@ -70,6 +71,28 @@ Gespeichert werden außerdem Schriftstärke, Laufweite, Groß-/Kleinschreibung,
 Konfidenz sowie Titel- und Autorfarbe. Bereits analysierte Bücher werden bei
 normalen Läufen übersprungen. Die einmalig geladenen Fontdateien liegen im nicht
 versionierten Verzeichnis `data/font-cache`.
+
+### Fehlende Cover über Open Library
+
+`npm run metadata:covers` ergänzt Bücher, für die Amazon kein Cover geliefert
+hat, konservativ über Open Library. Das Skript verarbeitet immer genau ein Buch
+vollständig: Suche, Coverdownload, lokale Datei, dominante Rückenfarbe,
+LM-Studio-Typografie und sofortiges SQLite-Update. Erst danach beginnt das
+nächste Buch. Zwischen sämtlichen Open-Library-Anfragen liegen mindestens 1,1
+Sekunden; erfolglose Suchen werden gespeichert und bei späteren normalen Läufen
+übersprungen.
+
+Für einen kleinen Probelauf oder eine bewusste Wiederholung der erfolglosen
+Suchen:
+
+```bash
+COVER_LIMIT=5 npm run metadata:covers
+COVER_RETRY=1 npm run metadata:covers
+```
+
+Die Cover werden unter `data/covers` abgelegt und nicht versioniert. Zur Laufzeit
+liefert die App sie selbst aus; die App auf der Synology benötigt weder Open
+Library noch LM Studio.
 
 Die Datenbank liegt standardmäßig unter `data/bookshelf.sqlite`. Mit `BOOKSHELF_DATABASE` kann ein anderer Zielpfad und mit `KINDLE_DATABASE` ein anderer Pfad zur Kindle-Datenbank gesetzt werden.
 

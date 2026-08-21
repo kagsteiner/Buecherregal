@@ -4,7 +4,7 @@ import { cleanTitle } from '../books.js';
 
 const USER_AGENT = 'Buecherregal-MVP/0.1 (private local library)';
 
-function normalize(value) {
+export function normalizeBookMetadata(value) {
   return value
     .normalize('NFKD')
     .replace(/[\u0300-\u036f]/g, '')
@@ -13,32 +13,32 @@ function normalize(value) {
     .trim();
 }
 
-function queryTitle(title) {
+export function queryBookTitle(title) {
   return cleanTitle(title)
     .replace(/\s*\([^)]*(kindle|edition|ausgabe)[^)]*\)\s*/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
 
-function queryAuthor(authors) {
+export function queryBookAuthor(authors) {
   const first = authors.split(/;|\s&\s/)[0].trim();
   const parts = first.split(',').map((part) => part.trim());
   return parts.length === 2 ? `${parts[1]} ${parts[0]}` : first;
 }
 
-function authorMatches(candidateAuthors, requestedAuthor) {
-  const requested = normalize(requestedAuthor).split(' ').filter((word) => word.length > 2);
-  const candidates = normalize((candidateAuthors || []).join(' '));
+export function authorMatches(candidateAuthors, requestedAuthor) {
+  const requested = normalizeBookMetadata(requestedAuthor).split(' ').filter((word) => word.length > 2);
+  const candidates = normalizeBookMetadata((candidateAuthors || []).join(' '));
   return requested.some((word) => candidates.includes(word));
 }
 
 export function choosePageCount(docs, title, author) {
-  const requestedTitle = normalize(title);
+  const requestedTitle = normalizeBookMetadata(title);
   const ranked = docs
     .filter((doc) => Number.isInteger(doc.number_of_pages_median))
     .filter((doc) => doc.number_of_pages_median >= 20 && doc.number_of_pages_median <= 5000)
     .map((doc) => {
-      const candidateTitle = normalize(doc.title || '');
+      const candidateTitle = normalizeBookMetadata(doc.title || '');
       const exactTitle = candidateTitle === requestedTitle;
       const relatedTitle = candidateTitle.includes(requestedTitle) || requestedTitle.includes(candidateTitle);
       const sameAuthor = authorMatches(doc.author_name, author);
@@ -49,8 +49,8 @@ export function choosePageCount(docs, title, author) {
 }
 
 async function lookup(book) {
-  const title = queryTitle(book.title);
-  const author = queryAuthor(book.authors || '');
+  const title = queryBookTitle(book.title);
+  const author = queryBookAuthor(book.authors || '');
   const url = new URL('https://openlibrary.org/search.json');
   url.searchParams.set('title', title);
   if (author) url.searchParams.set('author', author);

@@ -1,5 +1,7 @@
+import { readFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { cleanTitle, coverUrl } from '../books.js';
-import { databasePath } from '../config.js';
+import { coversPath, databasePath } from '../config.js';
 import { migrate, openDatabase } from '../database.js';
 import { FONT_CATALOG, FONT_CATALOG_VERSION, FONT_KEYS } from '../typography/font-catalog.js';
 import { renderFontContactSheet } from '../typography/contact-sheet.js';
@@ -118,8 +120,16 @@ export function validateTypography(value) {
   };
 }
 
-async function fetchCoverDataUrl(asin) {
-  const response = await fetch(coverUrl(asin), { signal: AbortSignal.timeout(15_000) });
+async function fetchCoverDataUrl(book) {
+  if (book.cover_local_path) {
+    if (basename(book.cover_local_path) !== book.cover_local_path) {
+      throw new Error('Unsafe local cover filename.');
+    }
+    const bytes = await readFile(join(coversPath, book.cover_local_path));
+    if (bytes.length < 1_000) throw new Error('Local cover image is too small.');
+    return `data:image/jpeg;base64,${bytes.toString('base64')}`;
+  }
+  const response = await fetch(coverUrl(book.asin), { signal: AbortSignal.timeout(15_000) });
   if (!response.ok) throw new Error(`Cover HTTP ${response.status}`);
   const contentType = response.headers.get('content-type');
   if (!contentType?.startsWith('image/')) throw new Error('Cover response is not an image.');
@@ -128,9 +138,9 @@ async function fetchCoverDataUrl(asin) {
   return `data:${contentType.split(';')[0]};base64,${bytes.toString('base64')}`;
 }
 
-async function analyzeBook(book, { baseUrl, model }) {
+export async function analyzeTypographyBook(book, { baseUrl, model }) {
   const displayBook = { ...book, title: cleanTitle(book.title) };
-  const imageUrl = await fetchCoverDataUrl(book.asin);
+  const imageUrl = await fetchCoverDataUrl(book);
   const contactSheetUrl = await renderFontContactSheet(displayBook);
   const response = await fetch(`${baseUrl}/chat/completions`, {
     method: 'POST',
@@ -181,6 +191,33 @@ function assignCandidates(results, property) {
   });
 }
 
+export function createSequentialTypographyState() {
+  return {
+    processed: 0,
+    titleCounts: new Map(FONT_KEYS.map((key) => [key, 0])),
+    authorCounts: new Map(FONT_KEYS.map((key) => [key, 0])),
+  };
+}
+
+function selectSequentialCandidate(candidates, counts) {
+  const selected = candidates
+    .map((key, rank) => ({ key, score: counts.get(key) + rank * 1.5 }))
+    .sort((left, right) => left.score - right.score || candidates.indexOf(left.key) - candidates.indexOf(right.key))[0].key;
+  counts.set(selected, counts.get(selected) + 1);
+  return selected;
+}
+
+export function finalizeSequentialTypography(result, state) {
+  const titleFontKey = selectSequentialCandidate(result.titleCandidates, state.titleCounts);
+  const authorFontKey = selectSequentialCandidate(result.authorCandidates, state.authorCounts);
+  state.processed += 1;
+  return {
+    titleFontKey,
+    authorFontKey,
+    layout: state.processed % 5 === 0 ? 'split' : 'inline',
+  };
+}
+
 export function finalizeTypography(results, splitShare = 0.2) {
   const titleFonts = assignCandidates(results, 'titleCandidates');
   const authorFonts = assignCandidates(results, 'authorCandidates');
@@ -206,7 +243,7 @@ export function finalizeTypography(results, splitShare = 0.2) {
   }));
 }
 
-async function assertServer(baseUrl, model) {
+export async function assertTypographyServer(baseUrl, model) {
   const response = await fetch(`${baseUrl}/models`, { signal: AbortSignal.timeout(5_000) });
   if (!response.ok) throw new Error(`LM Studio model endpoint returned HTTP ${response.status}.`);
   const models = (await response.json()).data || [];
@@ -226,6 +263,24 @@ async function assertServer(baseUrl, model) {
   }
 }
 
+export function saveTypographyResult(database, { book, result, final, model }) {
+  const now = new Date().toISOString();
+  database.prepare(`
+    UPDATE books SET
+      title_font_key = ?, author_font_key = ?, title_text_color = ?, author_text_color = ?,
+      spine_layout = ?, title_font_weight = ?, author_font_weight = ?, title_letter_spacing = ?,
+      author_letter_spacing = ?, title_case = ?, author_case = ?, typography_confidence = ?,
+      typography_model = ?, typography_catalog_version = ?, typography_analysis = ?,
+      typography_analyzed_at = ?, updated_at = ?
+    WHERE id = ?
+  `).run(
+    final.titleFontKey, final.authorFontKey, result.titleTextColor, result.authorTextColor,
+    final.layout, result.titleWeight, result.authorWeight, result.titleLetterSpacing,
+    result.authorLetterSpacing, result.titleCase, result.authorCase, result.confidence,
+    model, FONT_CATALOG_VERSION, JSON.stringify({ ...result, final }), now, now, book.id,
+  );
+}
+
 export async function enrichTypography({
   path = databasePath,
   limit,
@@ -234,14 +289,15 @@ export async function enrichTypography({
   reanalyze = false,
 } = {}) {
   const normalizedBaseUrl = baseUrl.replace(/\/$/, '');
-  await assertServer(normalizedBaseUrl, model);
+  await assertTypographyServer(normalizedBaseUrl, model);
   const database = openDatabase(path);
   migrate(database);
   const suffix = limit ? ' LIMIT ?' : '';
   const analysisFilter = reanalyze ? 'IS NOT NULL' : 'IS NULL';
   const books = database.prepare(`
-    SELECT id, asin, title, authors FROM books
-    WHERE typography_analyzed_at ${analysisFilter} AND asin IS NOT NULL AND length(asin) = 10
+    SELECT id, asin, title, authors, cover_local_path FROM books
+    WHERE typography_analyzed_at ${analysisFilter}
+      AND ((asin IS NOT NULL AND length(asin) = 10) OR cover_local_path IS NOT NULL)
     ORDER BY id${suffix}
   `).all(...(limit ? [limit] : []));
   const save = database.prepare(`
@@ -258,7 +314,7 @@ export async function enrichTypography({
 
   for (const [index, book] of books.entries()) {
     try {
-      const result = await analyzeBook(book, { baseUrl: normalizedBaseUrl, model });
+      const result = await analyzeTypographyBook(book, { baseUrl: normalizedBaseUrl, model });
       results.push({ book, result });
     } catch (error) {
       errors += 1;

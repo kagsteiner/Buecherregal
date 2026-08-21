@@ -1,8 +1,9 @@
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { createServer } from 'node:http';
-import { extname, join, normalize } from 'node:path';
+import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleBooksApi } from './books-api.js';
+import { coversPath } from './config.js';
 
 const root = fileURLToPath(new URL('../dist/client/', import.meta.url));
 const port = Number(process.env.PORT || 3000);
@@ -11,7 +12,11 @@ const types = {
   '.html': 'text/html; charset=utf-8',
   '.js': 'text/javascript; charset=utf-8',
   '.json': 'application/json; charset=utf-8',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.png': 'image/png',
   '.svg': 'image/svg+xml',
+  '.webp': 'image/webp',
 };
 
 function sendFile(response, path) {
@@ -24,6 +29,16 @@ createServer(async (request, response) => {
   if (await handleBooksApi(request, response)) return;
 
   const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);
+  if (pathname.startsWith('/covers/')) {
+    const requested = resolve(coversPath, pathname.slice('/covers/'.length));
+    if (requested.startsWith(`${coversPath}${sep}`) && existsSync(requested) && statSync(requested).isFile()) {
+      sendFile(response, requested);
+    } else {
+      response.statusCode = 404;
+      response.end('Not found');
+    }
+    return;
+  }
   const relative = normalize(pathname).replace(/^(\.\.(\/|\\|$))+/, '').replace(/^\/+/, '');
   const candidate = join(root, relative || 'index.html');
   if (candidate.startsWith(root) && existsSync(candidate) && statSync(candidate).isFile()) {

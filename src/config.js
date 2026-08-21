@@ -6,6 +6,10 @@ export const databasePath = resolve(
   process.env.BOOKSHELF_DATABASE ?? join(projectRoot, 'data', 'bookshelf.sqlite'),
 );
 
+export const coversPath = resolve(
+  process.env.BOOKSHELF_COVERS ?? join(projectRoot, 'data', 'covers'),
+);
+
 export const kindleDatabasePath = resolve(
   process.env.KINDLE_DATABASE ??
     join(

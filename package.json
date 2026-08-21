@@ -16,6 +16,7 @@
     "kindle:import": "node src/cli.js import-kindle",
     "metadata:pages": "node src/cli.js enrich-pages",
     "metadata:colors": "node src/cli.js enrich-colors",
+    "metadata:covers": "node src/cli.js enrich-covers",
     "metadata:typography": "node src/cli.js enrich-typography",
     "books:list": "node src/cli.js list",
     "test": "node --test && npm run check && npm run build"

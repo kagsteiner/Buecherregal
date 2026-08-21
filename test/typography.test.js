@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
 import test from 'node:test';
-import { finalizeTypography, TYPOGRAPHY_SCHEMA, validateTypography } from '../src/metadata/enrich-typography.js';
+import {
+  createSequentialTypographyState, finalizeSequentialTypography, finalizeTypography,
+  TYPOGRAPHY_SCHEMA, validateTypography,
+} from '../src/metadata/enrich-typography.js';
 import { FONT_KEYS } from '../src/typography/font-catalog.js';
 
 const valid = {
@@ -47,4 +50,14 @@ test('batch finalization enforces the 80/20 layout quota and uses ranked alterna
   assert.equal(finalized.filter((entry) => entry.final.layout === 'split').length, 5);
   assert.ok(finalized.some((entry) => entry.final.titleFontKey !== 'bebas-neue'));
   assert.ok(finalized.slice(-5).every((entry) => entry.final.layout === 'split'));
+});
+
+test('sequential finalization preserves font diversity and an exact rolling 80/20 layout', () => {
+  const state = createSequentialTypographyState();
+  const results = Array.from({ length: 10 }, () => finalizeSequentialTypography({
+    ...valid,
+    titleCandidates: ['bebas-neue', 'literata', 'inter'],
+  }, state));
+  assert.equal(results.filter((result) => result.layout === 'split').length, 2);
+  assert.equal(new Set(results.map((result) => result.titleFontKey)).size, 3);
 });

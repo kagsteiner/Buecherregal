@@ -9,7 +9,14 @@ type Book = {
   layoutPages: number;
   pageCountKnown: boolean;
   spineColor: string | null;
+  hiddenAt?: string | null;
   coverUrl: string | null;
+};
+
+type ShelfPresentation = {
+  eyebrow: string;
+  title: string;
+  showHeading: boolean;
 };
 
 const SHELF_SIZE = 10;
@@ -17,6 +24,11 @@ const AUTO_FIRST_MS = 8_000;
 const AUTO_REPEAT_MS = 25_000;
 const AUTO_CLOSE_MS = 11_000;
 const AUTO_SHELF_MS = 10 * 60_000;
+const shelfPresentation: ShelfPresentation = {
+  eyebrow: 'Unsere Bibliothek',
+  title: 'Was wir gerne lesen.',
+  showHeading: false,
+};
 
 const app = document.querySelector<HTMLElement>('#app')!;
 let books: Book[] = [];
@@ -27,6 +39,9 @@ let spotlightBook: Book | null = null;
 let spotlightTimer = 0;
 let ambientTimer = 0;
 let shelfTimer = 0;
+let hideLongPressTimer = 0;
+let hideLongPressTriggered = false;
+let hiddenBooks: Book[] | null = null;
 let pointerStart: { x: number; y: number } | null = null;
 
 function hash(input: string | number) {
@@ -72,7 +87,7 @@ function spineColor(book: Book) {
 
 function spineWidth(book: Book) {
   const normalized = Math.max(0, Math.min(1, (book.layoutPages - 180) / 720));
-  return Math.round(34 + normalized * 46);
+  return Math.round(42 + normalized * 56);
 }
 
 function spineTitle(title: string) {
@@ -91,11 +106,11 @@ function spineTitle(title: string) {
 function render() {
   const current = selection(shelfSeed);
   app.innerHTML = `
-    <section class="room" aria-label="Virtuelles Bücherregal">
-      <header class="masthead">
+    <section class="room${shelfPresentation.showHeading ? '' : ' room--ambient'}" aria-label="Virtuelles Bücherregal">
+      <header class="masthead"${shelfPresentation.showHeading ? '' : ' hidden'}>
         <div>
-          <p class="eyebrow">Unsere Bibliothek</p>
-          <h1>Was wir gerne lesen.</h1>
+          <p class="eyebrow">${escapeHtml(shelfPresentation.eyebrow)}</p>
+          <h1>${escapeHtml(shelfPresentation.title)}</h1>
         </div>
         <p class="book-count">${books.length.toLocaleString('de-DE')} Bücher</p>
       </header>
@@ -127,6 +142,7 @@ function render() {
       </footer>
     </section>
     ${spotlightBook ? spotlightMarkup(spotlightBook) : ''}
+    ${hiddenBooks ? hiddenManagerMarkup(hiddenBooks) : ''}
   `;
   bindEvents();
 }
@@ -148,9 +164,44 @@ function spotlightMarkup(book: Book) {
           <h2>${escapeHtml(book.title)}</h2>
           <p class="focus-author">${escapeHtml(book.authors)}</p>
           <p class="focus-pages">${pages}</p>
-          <button class="put-back">Zurück ins Regal</button>
+          <div class="focus-actions">
+            <button class="put-back">Zurück ins Regal</button>
+            <button class="hide-book" title="Kurz drücken: Buch ausblenden. Gedrückt halten: ausgeblendete Bücher verwalten.">Ausblenden</button>
+          </div>
+          <p class="hide-hint">„Ausblenden“ gedrückt halten, um Bücher wieder einzublenden.</p>
         </div>
       </article>
+    </div>
+  `;
+}
+
+function hiddenManagerMarkup(hidden: Book[]) {
+  return `
+    <div class="hidden-manager" role="dialog" aria-modal="true" aria-labelledby="hidden-title">
+      <button class="hidden-backdrop" type="button" aria-label="Zurück zum Regal"></button>
+      <section class="hidden-panel">
+        <p class="eyebrow">Regal verwalten</p>
+        <h2 id="hidden-title">Ausgeblendete Bücher</h2>
+        ${hidden.length ? `
+          <form class="hidden-form">
+            <div class="hidden-list">
+              ${hidden.map((book) => `
+                <label class="hidden-book-row">
+                  <input type="checkbox" name="hidden-book" value="${book.id}" />
+                  <span><strong>${escapeHtml(book.title)}</strong><small>${escapeHtml(book.authors)}</small></span>
+                </label>
+              `).join('')}
+            </div>
+            <div class="hidden-actions">
+              <button class="hidden-close" type="button">Abbrechen</button>
+              <button class="unhide-selected" type="submit" disabled>Wieder einblenden</button>
+            </div>
+          </form>
+        ` : `
+          <p class="hidden-empty">Zurzeit sind keine Bücher ausgeblendet.</p>
+          <button class="hidden-close" type="button">Zurück zum Regal</button>
+        `}
+      </section>
     </div>
   `;
 }
@@ -164,9 +215,47 @@ function bindEvents() {
   document.querySelectorAll('.spotlight-backdrop, .put-back').forEach((element) => {
     element.addEventListener('click', closeSpotlight);
   });
+  bindHideButton();
+  document.querySelectorAll('.hidden-backdrop, .hidden-close').forEach((element) => {
+    element.addEventListener('click', closeHiddenManager);
+  });
+  const hiddenForm = document.querySelector<HTMLFormElement>('.hidden-form');
+  hiddenForm?.addEventListener('change', updateUnhideButton);
+  hiddenForm?.addEventListener('submit', unhideSelectedBooks);
   const image = document.querySelector<HTMLImageElement>('.cover');
   image?.addEventListener('error', () => image.remove());
   window.requestAnimationFrame(centerSingleLineTitles);
+}
+
+function bindHideButton() {
+  const button = document.querySelector<HTMLButtonElement>('.hide-book');
+  if (!button) return;
+  const cancelLongPress = () => window.clearTimeout(hideLongPressTimer);
+  button.addEventListener('pointerdown', (event) => {
+    if (event.button !== 0) return;
+    hideLongPressTriggered = false;
+    cancelLongPress();
+    hideLongPressTimer = window.setTimeout(() => {
+      hideLongPressTriggered = true;
+      void openHiddenManager();
+    }, 700);
+  });
+  button.addEventListener('pointerup', cancelLongPress);
+  button.addEventListener('pointercancel', cancelLongPress);
+  button.addEventListener('pointerleave', cancelLongPress);
+  button.addEventListener('click', (event) => {
+    if (hideLongPressTriggered) {
+      event.preventDefault();
+      hideLongPressTriggered = false;
+      return;
+    }
+    void hideCurrentBook();
+  });
+  button.addEventListener('contextmenu', (event) => {
+    event.preventDefault();
+    cancelLongPress();
+    void openHiddenManager();
+  });
 }
 
 function centerSingleLineTitles() {
@@ -190,6 +279,63 @@ function closeSpotlight() {
   spotlightBook = null;
   window.clearTimeout(spotlightTimer);
   render();
+}
+
+async function loadVisibleBooks() {
+  const response = await fetch('/api/books');
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  books = (await response.json()).books;
+}
+
+async function hideCurrentBook() {
+  if (!spotlightBook) return;
+  const id = spotlightBook.id;
+  window.clearTimeout(spotlightTimer);
+  const response = await fetch(`/api/books/${id}/hide`, { method: 'POST' });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  await loadVisibleBooks();
+  spotlightBook = null;
+  render();
+  scheduleAmbient(AUTO_REPEAT_MS);
+}
+
+async function openHiddenManager() {
+  window.clearTimeout(spotlightTimer);
+  const response = await fetch('/api/books/hidden');
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  hiddenBooks = (await response.json()).books;
+  spotlightBook = null;
+  render();
+}
+
+function closeHiddenManager() {
+  if (!hiddenBooks) return;
+  hiddenBooks = null;
+  render();
+  scheduleAmbient(AUTO_REPEAT_MS);
+}
+
+function updateUnhideButton() {
+  const selected = document.querySelectorAll<HTMLInputElement>('[name="hidden-book"]:checked');
+  const button = document.querySelector<HTMLButtonElement>('.unhide-selected');
+  if (button) button.disabled = selected.length === 0;
+}
+
+async function unhideSelectedBooks(event: SubmitEvent) {
+  event.preventDefault();
+  const ids = [...document.querySelectorAll<HTMLInputElement>('[name="hidden-book"]:checked')]
+    .map((checkbox) => Number(checkbox.value));
+  if (ids.length === 0) return;
+  const response = await fetch('/api/books/unhide', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids }),
+  });
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  await loadVisibleBooks();
+  hiddenBooks = null;
+  render();
+  scheduleAmbient(AUTO_REPEAT_MS);
 }
 
 function nextShelf() {
@@ -218,7 +364,7 @@ function previousShelf() {
 }
 
 function ambientSpotlight() {
-  if (spotlightBook || document.hidden) return scheduleAmbient(AUTO_REPEAT_MS);
+  if (spotlightBook || hiddenBooks || document.hidden) return scheduleAmbient(AUTO_REPEAT_MS);
   const current = selection(shelfSeed);
   const book = current[Math.floor(Math.random() * current.length)];
   if (book) showSpotlight(book.id);
@@ -249,15 +395,13 @@ document.addEventListener('pointerup', (event) => {
 document.addEventListener('keydown', (event) => {
   if (event.key === 'ArrowLeft') previousShelf();
   if (event.key === 'ArrowRight') nextShelf();
-  if (event.key === 'Escape') closeSpotlight();
+  if (event.key === 'Escape') hiddenBooks ? closeHiddenManager() : closeSpotlight();
 });
 
 async function start() {
   app.innerHTML = '<p class="loading">Das Regal wird eingeräumt …</p>';
   try {
-    const response = await fetch('/api/books');
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    books = (await response.json()).books;
+    await loadVisibleBooks();
     seedHistory = [shelfSeed];
     historyIndex = 0;
     render();

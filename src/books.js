@@ -23,13 +23,14 @@ export function coverUrl(asin) {
   return `https://images-na.ssl-images-amazon.com/images/P/${asin}.01.LZZZZZZZ.jpg`;
 }
 
-export function listBooks(databasePath) {
+function listBooksWhere(databasePath, predicate) {
   const database = openDatabase(databasePath);
   migrate(database);
   const rows = database.prepare(`
-    SELECT id, source_id, asin, title, authors, page_count, page_count_source, spine_color
+    SELECT id, source_id, asin, title, authors, page_count, page_count_source,
+      spine_color, hidden_at
     FROM books
-    WHERE title <> ''
+    WHERE title <> '' AND ${predicate}
     ORDER BY title COLLATE NOCASE
   `).all();
   database.close();
@@ -47,7 +48,42 @@ export function listBooks(databasePath) {
       pageCountKnown: book.page_count !== null,
       pageCountSource: book.page_count_source,
       spineColor: book.spine_color,
+      hiddenAt: book.hidden_at,
       coverUrl: coverUrl(book.asin),
     };
   });
+}
+
+export function listBooks(databasePath) {
+  return listBooksWhere(databasePath, 'is_hidden = 0');
+}
+
+export function listHiddenBooks(databasePath) {
+  return listBooksWhere(databasePath, 'is_hidden = 1');
+}
+
+export function hideBook(id, databasePath) {
+  const database = openDatabase(databasePath);
+  migrate(database);
+  const now = new Date().toISOString();
+  const result = database.prepare(`
+    UPDATE books SET is_hidden = 1, hidden_at = ?, updated_at = ?
+    WHERE id = ? AND is_hidden = 0
+  `).run(now, now, id);
+  database.close();
+  return Number(result.changes);
+}
+
+export function unhideBooks(ids, databasePath) {
+  if (ids.length === 0) return 0;
+  const database = openDatabase(databasePath);
+  migrate(database);
+  const placeholders = ids.map(() => '?').join(', ');
+  const now = new Date().toISOString();
+  const result = database.prepare(`
+    UPDATE books SET is_hidden = 0, hidden_at = NULL, updated_at = ?
+    WHERE is_hidden = 1 AND id IN (${placeholders})
+  `).run(now, ...ids);
+  database.close();
+  return Number(result.changes);
 }

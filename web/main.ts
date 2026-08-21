@@ -113,6 +113,11 @@ let hideLongPressTriggered = false;
 let hiddenBooks: Book[] | null = null;
 let pointerStart: { x: number; y: number } | null = null;
 
+function appUrl(path: string) {
+  const base = new URL('.', window.location.href);
+  return new URL(path.replace(/^\/+/, ''), base).toString();
+}
+
 function hash(input: string | number) {
   let value = 2166136261;
   for (const character of String(input)) {
@@ -387,7 +392,7 @@ function closeSpotlight() {
 }
 
 async function loadVisibleBooks() {
-  const response = await fetch('/api/books');
+  const response = await fetch(appUrl('api/books'));
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   books = (await response.json()).books;
 }
@@ -396,7 +401,7 @@ async function hideCurrentBook() {
   if (!spotlightBook) return;
   const id = spotlightBook.id;
   window.clearTimeout(spotlightTimer);
-  const response = await fetch(`/api/books/${id}/hide`, { method: 'POST' });
+  const response = await fetch(appUrl(`api/books/${id}/hide`), { method: 'POST' });
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   await loadVisibleBooks();
   spotlightBook = null;
@@ -406,7 +411,7 @@ async function hideCurrentBook() {
 
 async function openHiddenManager() {
   window.clearTimeout(spotlightTimer);
-  const response = await fetch('/api/books/hidden');
+  const response = await fetch(appUrl('api/books/hidden'));
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   hiddenBooks = (await response.json()).books;
   spotlightBook = null;
@@ -431,7 +436,7 @@ async function unhideSelectedBooks(event: SubmitEvent) {
   const ids = [...document.querySelectorAll<HTMLInputElement>('[name="hidden-book"]:checked')]
     .map((checkbox) => Number(checkbox.value));
   if (ids.length === 0) return;
-  const response = await fetch('/api/books/unhide', {
+  const response = await fetch(appUrl('api/books/unhide'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids }),

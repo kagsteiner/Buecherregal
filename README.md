@@ -96,6 +96,22 @@ Die Cover werden unter `data/covers` abgelegt und nicht versioniert. Zur Laufzei
 liefert die App sie selbst aus; die App auf der Synology benötigt weder Open
 Library noch LM Studio.
 
+### Manuelle Cover-Werkstatt
+
+Für Bücher ohne automatischen Cover-Treffer gibt es ein ausschließlich lokal
+erreichbares Hilfsprogramm:
+
+```bash
+npm run covers:review
+```
+
+Die Oberfläche unter `http://127.0.0.1:3041` listet die noch offenen Bücher.
+Eine direkte Bild-URL startet einen Hintergrundauftrag, der das Bild prüft und
+lokal speichert, die Rückenfarbe ermittelt, Gemma über LM Studio aufruft und
+alle Ergebnisse sofort in SQLite schreibt. Mehrere Aufträge werden nacheinander
+verarbeitet; abgeschlossene Bücher werden in der geöffneten Liste ausgegraut.
+LM Studio und `google/gemma-4-12b` müssen dafür wie oben beschrieben laufen.
+
 Die Datenbank liegt standardmäßig unter `data/bookshelf.sqlite`. Mit `BOOKSHELF_DATABASE` kann ein anderer Zielpfad und mit `KINDLE_DATABASE` ein anderer Pfad zur Kindle-Datenbank gesetzt werden.
 
 Die lokale Datenbank enthält private Bibliotheksdaten und wird deshalb nicht in
@@ -137,5 +153,10 @@ HOST=127.0.0.1 PORT=3040 npm start
 
 Das Reverse-Proxy-Ziel ist dann `http://127.0.0.1:3040`. Weder LM Studio noch
 das Vision-Modell werden auf dem VPS benötigt.
+
+In der mitgelieferten Nginx-Konfiguration ist das Regal unter
+`https://srv706843.hstgr.cloud/buecherregal/` eingetragen. Der Build verwendet
+relative Asset-, API- und Coverpfade und funktioniert deshalb unverändert auch
+lokal unter `/`.
 
 Der Import ist wiederholbar: vorhandene Kindle-Einträge werden anhand ihrer Kindle-ID aktualisiert. Wörterbücher blendet der Import aus, weil sie in der Kindle-App nicht zur normalen Bibliothek gehören. Lesefortschritt wird nur eingetragen, wenn Kindle eine aktuelle und eine maximale Position lokal gespeichert hat.

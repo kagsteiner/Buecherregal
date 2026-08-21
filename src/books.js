@@ -25,7 +25,7 @@ export function coverUrl(asin) {
 
 export function localCoverUrl(path) {
   if (!path || !/^[a-zA-Z0-9._-]+$/.test(path)) return null;
-  return `/covers/${encodeURIComponent(path)}`;
+  return `covers/${encodeURIComponent(path)}`;
 }
 
 function listBooksWhere(databasePath, predicate) {

@@ -13,6 +13,7 @@ function booksApi() {
 }
 
 export default defineConfig({
+  base: './',
   plugins: [booksApi()],
   build: { outDir: 'dist/client', emptyOutDir: true },
 });

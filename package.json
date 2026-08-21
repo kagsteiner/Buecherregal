@@ -18,6 +18,7 @@
     "metadata:colors": "node src/cli.js enrich-colors",
     "metadata:covers": "node src/cli.js enrich-covers",
     "metadata:typography": "node src/cli.js enrich-typography",
+    "covers:review": "node src/cover-review-server.js",
     "books:list": "node src/cli.js list",
     "test": "node --test && npm run check && npm run build"
   },

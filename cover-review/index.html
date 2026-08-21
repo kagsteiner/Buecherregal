@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#17120e" />
+    <title>Cover-Werkstatt · Bücherregal</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <p class="eyebrow">Bücherregal · lokales Hilfsprogramm</p>
+          <h1>Cover-Werkstatt</h1>
+        </div>
+        <p class="summary" id="summary">Bücher werden gesucht …</p>
+      </header>
+      <section class="toolbar" aria-label="Bücher filtern">
+        <input id="search" type="search" placeholder="Titel oder Autor filtern" autocomplete="off" />
+        <span>LM Studio muss lokal laufen.</span>
+      </section>
+      <section id="books" class="books" aria-live="polite"></section>
+    </main>
+    <template id="book-template">
+      <article class="book">
+        <div class="cover-preview" aria-hidden="true"><span>Kein Cover</span></div>
+        <div class="metadata">
+          <h2></h2>
+          <p class="author"></p>
+          <form>
+            <label>
+              <span>Direkte Bild-URL</span>
+              <input name="url" type="url" placeholder="https://…/cover.jpg" required autocomplete="off" />
+            </label>
+            <button type="submit">Verarbeiten</button>
+          </form>
+          <p class="status" aria-live="polite"></p>
+        </div>
+      </article>
+    </template>
+    <script type="module" src="/main.js"></script>
+  </body>
+</html>

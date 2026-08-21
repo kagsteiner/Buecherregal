@@ -51,7 +51,7 @@ test('books can be hidden and restored persistently', (context) => {
     titleLetterSpacing: 0.04,
     titleCase: 'uppercase',
     typographyConfidence: 0.91,
-    coverUrl: '/covers/1-openlibrary-123.jpg',
+    coverUrl: 'covers/1-openlibrary-123.jpg',
     coverSource: 'openlibrary',
   });
   assert.equal(hideBook(id, path), 1);

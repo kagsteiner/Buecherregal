@@ -1,0 +1,28 @@
+{
+  "name": "buecherregal",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Virtuelles Bücherregal mit lokalem Kindle-Import",
+  "type": "module",
+  "engines": {
+    "node": ">=26.0.0"
+  },
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "check": "tsc --noEmit",
+    "start": "node src/server.js",
+    "db:init": "node src/cli.js init",
+    "kindle:import": "node src/cli.js import-kindle",
+    "metadata:pages": "node src/cli.js enrich-pages",
+    "books:list": "node src/cli.js list",
+    "test": "node --test && npm run check && npm run build"
+  },
+  "dependencies": {
+    "bplist-parser": "^0.3.2"
+  },
+  "devDependencies": {
+    "typescript": "^7.0.2",
+    "vite": "^8.2.2"
+  }
+}

@@ -1,0 +1,112 @@
+:root {
+  color: #f4ecdf;
+  background: #17120e;
+  font-family: Inter, Avenir, ui-sans-serif, system-ui, sans-serif;
+  font-synthesis: none;
+}
+
+* { box-sizing: border-box; }
+
+body { margin: 0; min-width: 320px; min-height: 100vh; overflow: hidden; }
+button { font: inherit; }
+
+.room {
+  min-height: 100svh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  padding: clamp(26px, 5vw, 72px) clamp(22px, 6vw, 100px) max(20px, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(circle at 50% 30%, rgba(216, 168, 104, .11), transparent 42%),
+    linear-gradient(135deg, #211914, #100d0a 70%);
+  touch-action: pan-y;
+  user-select: none;
+}
+
+.masthead { display: flex; align-items: end; justify-content: space-between; gap: 24px; }
+.eyebrow { margin: 0 0 8px; color: #c6a77c; font-size: clamp(.7rem, 1.25vw, .85rem); font-weight: 600; letter-spacing: .18em; text-transform: uppercase; }
+h1, h2 { font-family: Iowan Old Style, Baskerville, Georgia, serif; font-weight: 400; }
+h1 { margin: 0; font-size: clamp(2rem, 5vw, 4.8rem); line-height: .98; letter-spacing: -.02em; }
+.book-count { margin: 0 0 8px; color: #a99d90; font-size: clamp(.8rem, 1.4vw, 1rem); white-space: nowrap; }
+
+.shelf-region { position: relative; min-height: 0; display: flex; align-items: end; justify-content: center; padding: 6vh clamp(28px, 5vw, 76px) 5.5vh; }
+.books { z-index: 1; width: min(100%, 1120px); height: min(58vh, 610px); display: flex; align-items: end; justify-content: center; gap: clamp(3px, .5vw, 8px); }
+.spine {
+  position: relative;
+  width: var(--spine-width);
+  height: var(--spine-height);
+  min-height: 58%;
+  flex: 0 1 var(--spine-width);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 15px 7px 12px;
+  border: 0;
+  border-radius: 3px 5px 2px 2px;
+  color: rgba(255, 249, 237, .92);
+  background:
+    linear-gradient(90deg, rgba(0,0,0,.23), transparent 16%, transparent 82%, rgba(255,255,255,.1)),
+    var(--spine-color);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,.09), 2px 4px 9px rgba(0,0,0,.35);
+  cursor: pointer;
+  transition: transform .28s ease, filter .28s ease;
+  writing-mode: vertical-rl;
+}
+.spine:nth-child(3n) { transform: rotate(.35deg); }
+.spine:nth-child(4n) { transform: rotate(-.45deg); }
+.spine:hover, .spine:focus-visible { transform: translateY(-14px); filter: brightness(1.13); outline: 2px solid #e2c493; outline-offset: 4px; }
+.spine-title {
+  display: block;
+  block-size: 2.2em;
+  max-block-size: 2.2em;
+  overflow: hidden;
+  font-family: Iowan Old Style, Baskerville, Georgia, serif;
+  font-size: clamp(.86rem, 1.8vw, 1.32rem);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+.spine-title.is-single-line { padding-block: .55em; }
+.spine-author { max-height: 35%; overflow: hidden; color: rgba(255,255,255,.72); font-size: clamp(.5rem, .9vw, .68rem); letter-spacing: .09em; text-transform: uppercase; }
+.shelf-board { position: absolute; z-index: 0; right: 1%; bottom: 3.1vh; left: 1%; height: clamp(25px, 3vw, 42px); border-radius: 4px; background: linear-gradient(#6e4227, #3c2316 55%, #21130d); box-shadow: 0 20px 35px rgba(0,0,0,.5), inset 0 2px rgba(255,255,255,.1); }
+
+.nav { position: absolute; z-index: 3; bottom: 43%; width: 46px; height: 64px; border: 0; color: #bea987; background: transparent; font-family: Georgia, serif; font-size: 3rem; cursor: pointer; opacity: .55; }
+.nav:hover, .nav:focus-visible { opacity: 1; outline: 1px solid #806d53; }
+.nav-previous { left: 0; }.nav-next { right: 0; }
+footer { display: flex; justify-content: space-between; color: #786d62; font-size: .72rem; letter-spacing: .12em; text-transform: uppercase; }
+.swipe-hint { color: #a99a86; }
+.loading { min-height: 100vh; display: grid; place-items: center; margin: 0; background: #17120e; color: #c6a77c; }
+
+.spotlight { position: fixed; z-index: 10; inset: 0; display: grid; place-items: center; padding: 30px; }
+.spotlight-backdrop { position: absolute; inset: 0; border: 0; background: rgba(8, 6, 4, .82); backdrop-filter: blur(12px); animation: fade-in .45s ease both; }
+.book-focus { position: relative; display: grid; grid-template-columns: minmax(170px, 330px) minmax(240px, 470px); align-items: center; gap: clamp(32px, 7vw, 96px); width: min(90vw, 980px); animation: book-out .65s cubic-bezier(.2,.85,.25,1) both; }
+.cover-wrap { position: relative; aspect-ratio: 2 / 3; filter: drop-shadow(20px 28px 24px rgba(0,0,0,.55)); transform: perspective(1000px) rotateY(4deg); }
+.cover, .cover-fallback { position: absolute; inset: 0; width: 100%; height: 100%; border-radius: 3px 7px 7px 3px; }
+.cover { z-index: 2; object-fit: cover; background: #2d251d; }
+.cover-fallback { display: flex; flex-direction: column; justify-content: space-between; padding: 12%; background: linear-gradient(135deg, rgba(255,255,255,.14), transparent 45%), var(--cover-color); color: white; }
+.cover-fallback strong { font: 400 clamp(1.4rem, 3.5vw, 2.8rem)/1.05 Iowan Old Style, Baskerville, Georgia, serif; }
+.cover-fallback span { font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; }
+.book-details h2 { margin: 0; font-size: clamp(2.4rem, 6vw, 5rem); line-height: .98; }
+.focus-author { margin: 22px 0 8px; color: #d7c7b2; font-size: clamp(1rem, 2vw, 1.35rem); }
+.focus-pages { color: #938575; }
+.put-back { margin-top: 22px; padding: 11px 16px; border: 1px solid #816f57; border-radius: 999px; color: #dbc7aa; background: transparent; cursor: pointer; }
+
+@keyframes fade-in { from { opacity: 0; } }
+@keyframes book-out { from { opacity: 0; transform: translateY(12vh) scale(.78); } }
+
+@media (max-width: 700px) {
+  .room { padding-inline: 18px; }
+  .book-count { display: none; }
+  .shelf-region { padding-inline: 20px; }
+  .books { height: 58vh; gap: 3px; }
+  .spine { padding-inline: 4px; }
+  .spine-author { display: none; }
+  .nav { display: none; }
+  .book-focus { grid-template-columns: minmax(130px, 42vw) 1fr; gap: 24px; }
+  .book-details h2 { font-size: clamp(1.7rem, 7vw, 3rem); }
+  .put-back { margin-top: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}

@@ -1,0 +1,15 @@
+node_modules/
+dist/
+
+# Private local library data
+data/*.sqlite
+data/*.sqlite-*
+data/*.db
+data/*.db-*
+
+# Local configuration and operating-system files
+.env
+.env.*
+!.env.example
+.DS_Store
+npm-debug.log*

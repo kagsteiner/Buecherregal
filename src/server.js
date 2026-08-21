@@ -6,7 +6,8 @@ import { handleBooksApi } from './books-api.js';
 import { coversPath } from './config.js';
 
 const root = fileURLToPath(new URL('../dist/client/', import.meta.url));
-const port = Number(process.env.PORT || 3000);
+const port = Number(process.env.PORT || 3040);
+const host = process.env.HOST || '0.0.0.0';
 const types = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -46,6 +47,6 @@ createServer(async (request, response) => {
     return;
   }
   sendFile(response, join(root, 'index.html'));
-}).listen(port, '0.0.0.0', () => {
-  console.log(`Bücherregal läuft auf http://localhost:${port}`);
+}).listen(port, host, () => {
+  console.log(`Bücherregal läuft auf http://${host}:${port}`);
 });

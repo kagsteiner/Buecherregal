@@ -23,6 +23,8 @@ npm run dev
 
 `npm run dev` startet das Regal im lokalen Netz. Nach einem Produktions-Build mit
 `npm run build` startet `npm start` dieselbe App ohne Entwicklungsserver.
+Der Produktionsserver verwendet standardmäßig Port `3040`; `PORT` und `HOST`
+können diesen Wert beziehungsweise die Bind-Adresse überschreiben.
 
 Die optionale Metadatenanreicherung sucht konservativ nach Titel und Autor bei
 Open Library und übernimmt nur eindeutige Treffer. Für Bücher ohne Treffer erzeugt
@@ -98,5 +100,42 @@ Die Datenbank liegt standardmäßig unter `data/bookshelf.sqlite`. Mit `BOOKSHEL
 
 Die lokale Datenbank enthält private Bibliotheksdaten und wird deshalb nicht in
 Git eingecheckt. `npm run db:init` legt sie auf einem neuen Rechner wieder an.
+
+## Installation auf einem VPS
+
+Der aktuelle Anwendungsstand liegt auf dem Branch
+`cover-derived-spine-colors`. Eine Erstinstallation besteht aus dem geklonten
+Code und den separat übertragenen privaten Laufzeitdaten:
+
+```bash
+git clone --branch cover-derived-spine-colors --single-branch \
+  https://github.com/kagsteiner/Buecherregal.git
+cd Buecherregal
+npm ci
+npm run build
+mkdir -p data/covers
+```
+
+Anschließend werden vom Mac ausschließlich diese Daten auf den VPS übertragen:
+
+- `data/bookshelf.sqlite`
+- der vollständige Inhalt von `data/covers/`
+
+`data/font-cache` und die `bookshelf.before-*.sqlite`-Sicherungen werden zur
+Laufzeit nicht benötigt. Für die Übertragung sollte SFTP statt unverschlüsseltem
+FTP verwendet werden. Vor dem Ersetzen einer bereits produktiv verwendeten
+SQLite-Datei muss die App auf Quelle und Ziel gestoppt sein; danach wird sie mit
+`npm start` neu gestartet.
+
+Für HTTPS lauscht der Reverse Proxy öffentlich auf Port 443 und leitet intern
+auf die App weiter. Die App kann dafür beispielsweise ausschließlich an
+Loopback gebunden werden:
+
+```bash
+HOST=127.0.0.1 PORT=3040 npm start
+```
+
+Das Reverse-Proxy-Ziel ist dann `http://127.0.0.1:3040`. Weder LM Studio noch
+das Vision-Modell werden auf dem VPS benötigt.
 
 Der Import ist wiederholbar: vorhandene Kindle-Einträge werden anhand ihrer Kindle-ID aktualisiert. Wörterbücher blendet der Import aus, weil sie in der Kindle-App nicht zur normalen Bibliothek gehören. Lesefortschritt wird nur eingetragen, wenn Kindle eine aktuelle und eine maximale Position lokal gespeichert hat.

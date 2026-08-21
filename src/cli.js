@@ -3,6 +3,7 @@ import { databasePath } from './config.js';
 import { migrate, openDatabase } from './database.js';
 import { importKindleLibrary } from './kindle/import.js';
 import { enrichPageCounts } from './metadata/enrich-pages.js';
+import { enrichSpineColors } from './metadata/enrich-colors.js';
 
 function usage() {
   console.log(`Bücherregal
@@ -11,6 +12,7 @@ Aufrufe:
   npm run db:init
   npm run kindle:import
   npm run metadata:pages
+  npm run metadata:colors
   npm run books:list
 
 Datenbank: ${databasePath}`);
@@ -48,6 +50,12 @@ try {
     databaseClosed = true;
     const limit = Number(process.env.METADATA_LIMIT || 0) || undefined;
     const result = await enrichPageCounts({ limit });
+    console.log(JSON.stringify(result, null, 2));
+  } else if (command === 'enrich-colors') {
+    database.close();
+    databaseClosed = true;
+    const limit = Number(process.env.COLOR_LIMIT || 0) || undefined;
+    const result = await enrichSpineColors({ limit });
     console.log(JSON.stringify(result, null, 2));
   } else {
     usage();

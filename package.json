@@ -15,11 +15,13 @@
     "db:init": "node src/cli.js init",
     "kindle:import": "node src/cli.js import-kindle",
     "metadata:pages": "node src/cli.js enrich-pages",
+    "metadata:colors": "node src/cli.js enrich-colors",
     "books:list": "node src/cli.js list",
     "test": "node --test && npm run check && npm run build"
   },
   "dependencies": {
-    "bplist-parser": "^0.3.2"
+    "bplist-parser": "^0.3.2",
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "typescript": "^7.0.2",

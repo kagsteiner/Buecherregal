@@ -27,7 +27,7 @@ export function listBooks(databasePath) {
   const database = openDatabase(databasePath);
   migrate(database);
   const rows = database.prepare(`
-    SELECT id, source_id, asin, title, authors, page_count, page_count_source
+    SELECT id, source_id, asin, title, authors, page_count, page_count_source, spine_color
     FROM books
     WHERE title <> ''
     ORDER BY title COLLATE NOCASE
@@ -46,6 +46,7 @@ export function listBooks(databasePath) {
       layoutPages: book.page_count || fallbackPages,
       pageCountKnown: book.page_count !== null,
       pageCountSource: book.page_count_source,
+      spineColor: book.spine_color,
       coverUrl: coverUrl(book.asin),
     };
   });

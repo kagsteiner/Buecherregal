@@ -8,6 +8,7 @@ type Book = {
   pageCount: number | null;
   layoutPages: number;
   pageCountKnown: boolean;
+  spineColor: string | null;
   coverUrl: string | null;
 };
 
@@ -62,6 +63,7 @@ function escapeHtml(value: string) {
 }
 
 function spineColor(book: Book) {
+  if (book.spineColor) return book.spineColor;
   const hue = hash(book.sourceId) % 360;
   const saturation = 25 + (hash(`${book.sourceId}:s`) % 24);
   const lightness = 25 + (hash(`${book.sourceId}:l`) % 22);

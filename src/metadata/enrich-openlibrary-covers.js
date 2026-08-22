@@ -191,7 +191,7 @@ export async function enrichOpenLibraryCovers({
         continue;
       }
       const cover = await downloadCover(match.cover_i);
-      const color = await dominantSpineColor(cover);
+      const color = await dominantSpineColor(cover, `${book.title}:${book.id}`);
       if (!color) throw new Error('No dominant cover color could be determined.');
       const filename = `${book.id}-openlibrary-${match.cover_i}.jpg`;
       await saveCoverFile(directory, filename, cover);

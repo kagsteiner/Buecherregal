@@ -36,6 +36,7 @@ import '@fontsource/special-elite/latin.css';
 import '@fontsource/special-elite/latin-ext.css';
 import '@fontsource-variable/caveat';
 import { ensureTextContrast } from '../src/color-contrast.js';
+import { lightNeutralSpineColor } from '../src/light-spine-color.js';
 import './styles.css';
 
 type Book = {
@@ -152,6 +153,7 @@ function escapeHtml(value: string) {
 }
 
 function spineColor(book: Book) {
+  if (book.spineColor === '#6b6b6b') return lightNeutralSpineColor(`${book.title}:${book.sourceId}`);
   if (book.spineColor) return book.spineColor;
   const hue = hash(book.sourceId) % 360;
   const saturation = 25 + (hash(`${book.sourceId}:s`) % 24);

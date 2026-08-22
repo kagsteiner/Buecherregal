@@ -142,7 +142,7 @@ export async function processManualCover({
     onStage('Cover wird geladen');
     const downloaded = await fetchRemoteCover(url);
     const cover = await normalizeCover(downloaded.buffer);
-    const color = await dominantSpineColor(cover);
+    const color = await dominantSpineColor(cover, `${book.title}:${book.id}`);
     if (!color) throw new Error('Aus dem Cover konnte keine Rückenfarbe ermittelt werden.');
     const fingerprint = createHash('sha256').update(downloaded.sourceUrl).digest('hex').slice(0, 12);
     const filename = `${book.id}-manual-${fingerprint}.jpg`;

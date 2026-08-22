@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { cleanTitle, coverUrl, deterministicPageCount } from '../src/books.js';
 import { choosePageCount } from '../src/metadata/enrich-pages.js';
-import { adjustDominantColor } from '../src/metadata/enrich-colors.js';
+import { adjustDominantColor, lightNeutralSpineColor } from '../src/metadata/enrich-colors.js';
 import { contrastRatio, ensureTextContrast } from '../src/color-contrast.js';
 
 test('deterministic page fallback stays stable and in the agreed range', () => {
@@ -34,7 +34,14 @@ test('cover URLs are only generated for plausible ASINs', () => {
 
 test('dominant cover colors are darkened and desaturated to a valid spine color', () => {
   assert.match(adjustDominantColor({ r: 255, g: 0, b: 0 }), /^#[0-9a-f]{6}$/);
-  assert.equal(adjustDominantColor({ r: 255, g: 255, b: 255 }), '#6b6b6b');
+});
+
+test('white covers become stable, varied light spine colors', () => {
+  const first = adjustDominantColor({ r: 255, g: 255, b: 255 }, 'First book');
+  assert.equal(first, adjustDominantColor({ r: 255, g: 255, b: 255 }, 'First book'));
+  assert.notEqual(first, adjustDominantColor({ r: 255, g: 255, b: 255 }, 'Second book'));
+  assert.equal(first, lightNeutralSpineColor('First book'));
+  assert.match(first, /^#[0-9a-f]{6}$/);
 });
 
 test('low-contrast spine lettering is minimally corrected to an accessible contrast', () => {

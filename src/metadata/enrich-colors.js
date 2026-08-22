@@ -2,6 +2,9 @@ import sharp from 'sharp';
 import { coverUrl } from '../books.js';
 import { databasePath } from '../config.js';
 import { migrate, openDatabase } from '../database.js';
+import { lightNeutralSpineColor } from '../light-spine-color.js';
+
+export { lightNeutralSpineColor } from '../light-spine-color.js';
 
 function rgbToHsl({ r, g, b }) {
   const red = r / 255;
@@ -34,18 +37,23 @@ function hslToRgb({ h, s, l }) {
   return values.map((value) => Math.round((value + offset) * 255));
 }
 
-export function adjustDominantColor(rgb) {
+function hslToHex(hsl) {
+  const [r, g, b] = hslToRgb(hsl);
+  return `#${[r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+}
+
+export function adjustDominantColor(rgb, seed = 'cover') {
   const hsl = rgbToHsl(rgb);
+  if (hsl.l >= 0.72 && hsl.s < 0.12) return lightNeutralSpineColor(seed);
   const adjusted = {
     h: hsl.h,
     s: hsl.s < 0.05 ? 0 : Math.min(0.65, Math.max(0.18, hsl.s * 0.82)),
     l: Math.min(0.42, Math.max(0.2, hsl.l * 0.82)),
   };
-  const [r, g, b] = hslToRgb(adjusted);
-  return `#${[r, g, b].map((value) => value.toString(16).padStart(2, '0')).join('')}`;
+  return hslToHex(adjusted);
 }
 
-export async function dominantSpineColor(buffer) {
+export async function dominantSpineColor(buffer, seed) {
   const image = sharp(buffer, { failOn: 'warning' });
   const metadata = await image.metadata();
   if ((metadata.width || 0) < 20 || (metadata.height || 0) < 20) return null;
@@ -54,10 +62,10 @@ export async function dominantSpineColor(buffer) {
     .flatten({ background: '#ffffff' })
     .removeAlpha()
     .stats();
-  return adjustDominantColor(stats.dominant);
+  return adjustDominantColor(stats.dominant, seed);
 }
 
-async function fetchColor(asin) {
+async function fetchColor(asin, seed) {
   const response = await fetch(coverUrl(asin), {
     headers: { 'User-Agent': 'Buecherregal-MVP/0.1 (private local library)' },
     signal: AbortSignal.timeout(12_000),
@@ -68,7 +76,7 @@ async function fetchColor(asin) {
     return { color: null, unavailable: true };
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  const color = await dominantSpineColor(buffer);
+  const color = await dominantSpineColor(buffer, seed);
   return { color, unavailable: color === null };
 }
 
@@ -92,7 +100,7 @@ export async function enrichSpineColors({ path = databasePath, limit } = {}) {
 
   for (const [index, book] of books.entries()) {
     try {
-      const result = await fetchColor(book.asin);
+      const result = await fetchColor(book.asin, `${book.title}:${book.id}`);
       const now = new Date().toISOString();
       save.run(result.color, result.color ? 'amazon-cover-dominant' : null, now, now, book.id);
       if (result.color) colored += 1;

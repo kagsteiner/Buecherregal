@@ -133,6 +133,11 @@ footer { display: flex; justify-content: space-between; color: #786d62; font-siz
 .hardcover-rating { display: flex; align-items: baseline; flex-wrap: wrap; gap: 9px; color: #9c8e7e; font-size: .72rem; }
 .hardcover-rating strong { color: #e1bc76; font-size: 1rem; }
 .metadata-source, .metadata-empty { margin: 0; color: #817466; font-size: .72rem; }
+.phone-book { display: grid; grid-template-columns: 104px 1fr; align-items: center; gap: 16px; margin-top: 20px; padding: 14px; border: 1px solid rgba(198,167,124,.2); border-radius: 12px; background: rgba(198,167,124,.055); }
+.phone-book img { width: 104px; height: 104px; padding: 5px; border-radius: 7px; background: #f4ecdf; }
+.phone-book strong { color: #eadbc7; font-size: .86rem; }
+.phone-book p { margin: 5px 0 7px; color: #9f9181; font-size: .7rem; line-height: 1.45; }
+.phone-book a { color: #c9aa81; font-size: .7rem; }
 
 .hidden-manager { position: fixed; z-index: 20; inset: 0; display: grid; place-items: center; padding: clamp(18px, 4vw, 48px); }
 .hidden-backdrop { position: absolute; inset: 0; border: 0; background: rgba(8, 6, 4, .88); backdrop-filter: blur(14px); }
@@ -167,6 +172,8 @@ footer { display: flex; justify-content: space-between; color: #786d62; font-siz
   .book-details h2 { font-size: clamp(1.7rem, 7vw, 3rem); }
   .book-focus--expanded .book-details h2 { font-size: clamp(1.45rem, 5.5vw, 2.5rem); }
   .book-description { font-size: .78rem; line-height: 1.45; }
+  .phone-book { grid-template-columns: 86px 1fr; padding: 10px; }
+  .phone-book img { width: 86px; height: 86px; }
   .focus-actions { margin-top: 10px; }
   .hide-hint { display: none; }
   .hidden-panel { width: 94vw; max-height: 88vh; padding: 22px 18px; }

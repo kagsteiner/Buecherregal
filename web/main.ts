@@ -72,6 +72,7 @@ type Book = {
   ratingsCount: number | null;
   ratingsDistribution: Array<{ rating: number; count: number }>;
   hardcoverMatchConfidence: number | null;
+  publicPath: string;
 };
 
 type ShelfPresentation = {
@@ -312,11 +313,9 @@ function hardcoverDetailsMarkup(book: Book) {
   const hasRating = book.rating !== null && Number(book.ratingsCount) > 0;
   const rating = hasRating ? book.rating!.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : '';
   const count = hasRating ? Number(book.ratingsCount).toLocaleString('de-DE') : '';
-  if (!book.description && !chips.length && !hasRating) {
-    return '<p class="metadata-empty">Hardcover hat für dieses Buch noch keine weiteren Angaben.</p>';
-  }
   return `
     <section class="book-metadata" aria-label="Informationen von Hardcover">
+      ${!book.description && !chips.length && !hasRating ? '<p class="metadata-empty">Hardcover hat für dieses Buch noch keine weiteren Angaben.</p>' : ''}
       ${book.description ? `<p class="book-description">${escapeHtml(book.description)}</p>` : ''}
       ${chips.length ? `<div class="metadata-chips">${chips.map(({ label, kind }) =>
         `<span class="metadata-chip metadata-chip--${kind}">${escapeHtml(label)}</span>`).join('')}</div>` : ''}
@@ -326,6 +325,14 @@ function hardcoverDetailsMarkup(book: Book) {
           <span>${count} ${Number(book.ratingsCount) === 1 ? 'Bewertung' : 'Bewertungen'} bei Hardcover</span>
         </div>
       ` : '<p class="metadata-source">Metadaten von Hardcover</p>'}
+    </section>
+    <section class="phone-book" aria-label="Buch auf dem Handy ansehen">
+      <img src="${appUrl(`api/books/${book.id}/qr`)}" alt="QR-Code für ${escapeHtml(book.title)}" />
+      <div>
+        <strong>Auf dem Handy ansehen</strong>
+        <p>QR-Code scannen, um das Buch bei Open Library oder Hardcover zu finden. Familienmitglieder können es dort auch direkt in Kindle öffnen.</p>
+        <a href="${appUrl(book.publicPath)}" target="_blank" rel="noopener">Öffentliche Buchseite öffnen</a>
+      </div>
     </section>
   `;
 }

@@ -1,4 +1,6 @@
 import { hideBook, listBooks, listHiddenBooks, unhideBooks } from './books.js';
+import QRCode from 'qrcode';
+import { DEVELOPMENT_PUBLIC_TOKEN_SECRET, publicBookPath, publicBookUrl } from './public-books.js';
 
 function sendJson(response, status, body) {
   response.statusCode = status;
@@ -19,13 +21,35 @@ async function readJson(request) {
   return JSON.parse(Buffer.concat(chunks).toString('utf8'));
 }
 
-export async function handleBooksApi(request, response) {
+export async function handleBooksApi(request, response, options = {}) {
   const url = new URL(request.url, 'http://localhost');
   if (!url.pathname.startsWith('/api/books')) return false;
+  const publicTokenSecret = options.publicTokenSecret || process.env.SESSION_SECRET || DEVELOPMENT_PUBLIC_TOKEN_SECRET;
 
   try {
     if (request.method === 'GET' && url.pathname === '/api/books') {
-      sendJson(response, 200, { books: listBooks() });
+      const books = listBooks().map((book) => ({
+        ...book,
+        publicPath: publicBookPath(book, publicTokenSecret),
+      }));
+      sendJson(response, 200, { books });
+      return true;
+    }
+    const qrMatch = request.method === 'GET' && url.pathname.match(/^\/api\/books\/(\d+)\/qr$/);
+    if (qrMatch) {
+      const book = listBooks().find((entry) => entry.id === Number(qrMatch[1]));
+      if (!book) {
+        sendJson(response, 404, { error: 'Nicht gefunden.' });
+        return true;
+      }
+      const svg = await QRCode.toString(publicBookUrl(request, book, publicTokenSecret), {
+        type: 'svg', margin: 1, errorCorrectionLevel: 'M',
+        color: { dark: '#17120eff', light: '#f4ecdf00' },
+      });
+      response.statusCode = 200;
+      response.setHeader('Content-Type', 'image/svg+xml; charset=utf-8');
+      response.setHeader('Cache-Control', 'private, max-age=3600');
+      response.end(svg);
       return true;
     }
     if (request.method === 'GET' && url.pathname === '/api/books/hidden') {

@@ -143,6 +143,22 @@ Antippen von Cover oder Titel öffnet die gespeicherten Hardcover-Details und st
 den automatischen Schließtimer. Direkt aus dem Regal angetippte Bücher öffnen die
 Detailansicht sofort.
 
+### QR-Code und öffentliche Buchseite
+
+Die erweiterte Buchansicht zeigt einen lokal erzeugten QR-Code. Er verweist auf
+eine mobile, ohne Anmeldung erreichbare Seite mit den gespeicherten Buchdetails.
+Open Library steht dort bewusst an erster Stelle, danach folgt Hardcover. Die
+öffentliche URL enthält keine fortlaufende Buch-ID, sondern einen aus
+`SESSION_SECRET` abgeleiteten und nicht erratbaren Token. Wird das
+Session-Geheimnis geändert, ändern sich daher auch diese öffentlichen Links.
+
+Gäste sehen auf der öffentlichen Seite keine Amazon- oder Kindle-Funktion.
+Familienmitglieder können den Familienzugang verwenden; nach der Anmeldung kehren
+sie direkt zum Buch zurück. Für Bücher mit ASIN erscheint anschließend
+„In Kindle öffnen“. Dabei wird ein von Kindle-Apps verbreitet unterstützter, aber
+von Amazon nicht offiziell dokumentierter App-Link verwendet. Als manueller
+Fallback steht der offizielle Amazon-Link zur Buchdetailseite bereit.
+
 ## Installation auf einem VPS
 
 Der aktuelle Anwendungsstand liegt auf dem Branch

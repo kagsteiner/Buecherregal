@@ -65,7 +65,13 @@ function validSession(token, secret, now = Date.now()) {
   }
 }
 
-function loginPage({ error = '', action = 'auth/login' } = {}) {
+function safeNext(value) {
+  return typeof value === 'string' && /^\/buch\/[A-Za-z0-9_-]{20,64}\/?$/.test(value)
+    ? value.replace(/\/$/, '')
+    : '';
+}
+
+function loginPage({ error = '', action = 'auth/login', next = '' } = {}) {
   return `<!doctype html>
 <html lang="de">
   <head>
@@ -95,6 +101,7 @@ function loginPage({ error = '', action = 'auth/login' } = {}) {
       <p class="intro">Bitte gib das Passwort ein, um das Regal zu öffnen.</p>
       ${error ? `<p class="error" role="alert">${error}</p>` : ''}
       <form method="post" action="${action}">
+        ${next ? `<input name="next" type="hidden" value="${next}" />` : ''}
         <label>Passwort<input name="password" type="password" autocomplete="current-password" required autofocus /></label>
         <button type="submit">Regal öffnen</button>
       </form>
@@ -115,9 +122,10 @@ async function readForm(request) {
   return new URLSearchParams(Buffer.concat(chunks).toString('utf8'));
 }
 
-function showLogin(request, response, status = 200, error = '') {
+function showLogin(request, response, status = 200, error = '', requestedNext = '') {
   const prefix = requestPrefix(request);
-  const body = loginPage({ error, action: `${prefix}/auth/login` });
+  const next = safeNext(requestedNext || new URL(request.url, 'http://localhost').searchParams.get('next'));
+  const body = loginPage({ error, action: `${prefix}/auth/login`, next });
   response.statusCode = status;
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
   response.setHeader('Cache-Control', 'no-store');
@@ -146,13 +154,14 @@ export function createAuthHandler(configuration) {
         return false;
       }
       const form = await readForm(request);
+      const next = safeNext(form.get('next'));
       if (!safeEqual(form.get('password') || '', configuration.password)) {
         const failures = previous?.blockedUntil > Date.now() - LOGIN_BLOCK_MS ? previous.failures + 1 : 1;
         failedLogins.set(address, {
           failures,
           blockedUntil: failures >= MAX_FAILED_LOGINS ? Date.now() + LOGIN_BLOCK_MS : Date.now(),
         });
-        showLogin(request, response, 401, 'Das Passwort ist nicht richtig.');
+        showLogin(request, response, 401, 'Das Passwort ist nicht richtig.', next);
         return false;
       }
       failedLogins.delete(address);
@@ -167,7 +176,7 @@ export function createAuthHandler(configuration) {
       response.statusCode = 303;
       response.setHeader('Set-Cookie', attributes.join('; '));
       response.setHeader('Cache-Control', 'no-store');
-      response.setHeader('Location', `${prefix}/` || '/');
+      response.setHeader('Location', `${prefix}${next || '/'}` || '/');
       response.end();
       return false;
     }
@@ -182,4 +191,8 @@ export function createAuthHandler(configuration) {
   };
 }
 
-export const authInternals = { loginPage, sessionToken, validSession, requestPrefix };
+export function isAuthenticatedRequest(request, configuration) {
+  return validSession(cookies(request)[COOKIE_NAME], configuration.secret);
+}
+
+export const authInternals = { loginPage, sessionToken, validSession, requestPrefix, safeNext };

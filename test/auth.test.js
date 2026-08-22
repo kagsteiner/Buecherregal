@@ -57,6 +57,26 @@ test('login sets a secure subpath cookie and redirects to the proxied app', asyn
   assert.match(reply.headers['set-cookie'], /Secure/);
 });
 
+test('family login safely returns to a public book while rejecting external redirects', async () => {
+  const handle = createAuthHandler({ password: 'richtiges-passwort', secret: 's'.repeat(32) });
+  const token = 'a'.repeat(24);
+  const reply = response();
+  await handle(request({
+    method: 'POST', url: '/auth/login',
+    headers: { 'x-forwarded-prefix': '/buecherregal' },
+    body: `password=richtiges-passwort&next=${encodeURIComponent(`/buch/${token}`)}`,
+  }), reply);
+  assert.equal(reply.headers.location, `/buecherregal/buch/${token}`);
+
+  const unsafeReply = response();
+  await handle(request({
+    method: 'POST', url: '/auth/login',
+    headers: { 'x-forwarded-prefix': '/buecherregal' },
+    body: 'password=richtiges-passwort&next=https%3A%2F%2Fevil.example',
+  }), unsafeReply);
+  assert.equal(unsafeReply.headers.location, '/buecherregal/');
+});
+
 test('unauthenticated pages receive login UI while APIs receive JSON 401', async () => {
   const handle = createAuthHandler({ password: 'richtiges-passwort', secret: 's'.repeat(32) });
   const pageReply = response();

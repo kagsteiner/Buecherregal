@@ -3,11 +3,13 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleBooksApi } from './books-api.js';
+import { authConfiguration, createAuthHandler } from './auth.js';
 import { coversPath } from './config.js';
 
 const root = fileURLToPath(new URL('../dist/client/', import.meta.url));
 const port = Number(process.env.PORT || 3040);
 const host = process.env.HOST || '0.0.0.0';
+const handleAuth = createAuthHandler(authConfiguration());
 const types = {
   '.css': 'text/css; charset=utf-8',
   '.html': 'text/html; charset=utf-8',
@@ -27,6 +29,7 @@ function sendFile(response, path) {
 }
 
 createServer(async (request, response) => {
+  if (!await handleAuth(request, response)) return;
   if (await handleBooksApi(request, response)) return;
 
   const pathname = decodeURIComponent(new URL(request.url, 'http://localhost').pathname);

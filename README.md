@@ -151,6 +151,29 @@ Loopback gebunden werden:
 HOST=127.0.0.1 PORT=3040 npm start
 ```
 
+Der Produktionsserver verlangt außerdem ein gemeinsames App-Passwort und ein
+mindestens 32 Zeichen langes Geheimnis zum Signieren der 365 Tage gültigen
+Anmelde-Cookies. Beide Werte gehören ausschließlich in die nicht versionierte
+`.env`-Datei. Als Ausgangspunkt dient `.env.example`:
+
+```bash
+cp .env.example .env
+nano .env
+chmod 600 .env
+```
+
+Ein geeignetes Session-Geheimnis lässt sich beispielsweise mit
+`openssl rand -hex 32` erzeugen. Das Ändern von `SESSION_SECRET` meldet alle
+bislang angemeldeten Geräte ab. `npm start` lädt `.env` nativ über Node 26.
+
+Mit PM2 wird dieselbe Datei so geladen:
+
+```bash
+pm2 start src/server.js --name buecherregal \
+  --interpreter "$(nvm which 26)" --node-args="--env-file=.env" --time
+pm2 save
+```
+
 Das Reverse-Proxy-Ziel ist dann `http://127.0.0.1:3040`. Weder LM Studio noch
 das Vision-Modell werden auf dem VPS benötigt.
 

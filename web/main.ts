@@ -35,8 +35,18 @@ import '@fontsource-variable/orbitron';
 import '@fontsource/special-elite/latin.css';
 import '@fontsource/special-elite/latin-ext.css';
 import '@fontsource-variable/caveat';
+import {
+  EMPTY_BOOK_FILTER,
+  collectFacetOptions,
+  filterBooks,
+  hasActiveBookFilter,
+  normalizeFilterText,
+  sanitizeBookFilter,
+} from '../src/book-filter.js';
+import type { BookFilter, FacetOption } from '../src/book-filter.js';
 import { ensureTextContrast } from '../src/color-contrast.js';
 import { lightNeutralSpineColor } from '../src/light-spine-color.js';
+import { ShuffleBag } from '../src/shuffle-bag.js';
 import './styles.css';
 
 type Book = {
@@ -86,6 +96,7 @@ const AUTO_FIRST_MS = 8_000;
 const AUTO_REPEAT_MS = 25_000;
 const AUTO_CLOSE_MS = 11_000;
 const AUTO_SHELF_MS = 10 * 60_000;
+const FILTER_STORAGE_KEY = 'bookshelf.filter.v1';
 const shelfPresentation: ShelfPresentation = {
   eyebrow: 'Unsere Bibliothek',
   title: 'Was wir gerne lesen.',
@@ -112,6 +123,7 @@ const FONT_FAMILIES: Record<string, string> = {
 };
 
 const app = document.querySelector<HTMLElement>('#app')!;
+let allBooks: Book[] = [];
 let books: Book[] = [];
 let shelfSeed = Math.floor(Date.now() / 86_400_000);
 let seedHistory: number[] = [];
@@ -125,6 +137,33 @@ let hideLongPressTimer = 0;
 let hideLongPressTriggered = false;
 let hiddenBooks: Book[] | null = null;
 let pointerStart: { x: number; y: number } | null = null;
+const ambientBookBag = new ShuffleBag();
+let activeFilter = readStoredFilter();
+let draftFilter = cloneFilter(activeFilter);
+let filterOpen = false;
+let genreOptions: FacetOption[] = [];
+let moodOptions: FacetOption[] = [];
+
+function cloneFilter(filter: BookFilter) {
+  return sanitizeBookFilter(filter);
+}
+
+function readStoredFilter() {
+  try {
+    return sanitizeBookFilter(JSON.parse(window.localStorage.getItem(FILTER_STORAGE_KEY) || 'null'));
+  } catch {
+    return cloneFilter(EMPTY_BOOK_FILTER as BookFilter);
+  }
+}
+
+function storeFilter(filter: BookFilter) {
+  try {
+    if (hasActiveBookFilter(filter)) window.localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(filter));
+    else window.localStorage.removeItem(FILTER_STORAGE_KEY);
+  } catch {
+    // The filter still works for this session when browser storage is unavailable.
+  }
+}
 
 function appUrl(path: string) {
   const base = new URL('.', window.location.href);
@@ -221,6 +260,90 @@ function spineTitle(title: string) {
   return `${shortened || normalized.slice(0, 51)}…`;
 }
 
+function selectedFacetValues(kind: 'genres' | 'moods') {
+  return new Set(draftFilter[kind].map(normalizeFilterText));
+}
+
+function facetOptionsMarkup(kind: 'genres' | 'moods', options: FacetOption[]) {
+  const selected = selectedFacetValues(kind);
+  return options.map((option, index) => {
+    const active = selected.has(option.normalized);
+    const initiallyVisible = kind === 'moods' || index < 12 || active;
+    return `<button
+      class="facet-option${active ? ' facet-option--selected' : ''}"
+      type="button"
+      data-filter-facet="${kind}"
+      data-filter-value="${escapeHtml(option.value)}"
+      data-filter-normalized="${escapeHtml(option.normalized)}"
+      data-popular="${index < 12}"
+      aria-pressed="${active}"
+      ${initiallyVisible ? '' : 'hidden'}
+    >${escapeHtml(option.value)} <small>${option.count}</small></button>`;
+  }).join('');
+}
+
+function filterPanelMarkup() {
+  const previewCount = filterBooks(allBooks, draftFilter).length;
+  return `
+    <div class="filter-dialog" role="dialog" aria-modal="true" aria-labelledby="filter-title">
+      <button class="filter-backdrop" type="button" aria-label="Filter schließen"></button>
+      <section class="filter-panel">
+        <p class="eyebrow">Regal zusammenstellen</p>
+        <h2 id="filter-title">Bücher filtern</h2>
+        <form class="filter-form">
+          <div class="filter-scroll">
+            <div class="filter-text-fields">
+              <label>Titel enthält<input name="title" value="${escapeHtml(draftFilter.title)}" autocomplete="off" /></label>
+              <label>Autor enthält<input name="author" value="${escapeHtml(draftFilter.author)}" autocomplete="off" /></label>
+              <label class="filter-wide">Inhaltsbeschreibung enthält<input name="description" value="${escapeHtml(draftFilter.description)}" autocomplete="off" /></label>
+            </div>
+
+            <fieldset>
+              <legend>Genre</legend>
+              <p>Mehrere Genres werden mit „oder“ verknüpft.</p>
+              <input class="facet-search" type="search" data-facet-search="genres" placeholder="Genre suchen …" autocomplete="off" />
+              <div class="facet-options" data-facet-options="genres">${facetOptionsMarkup('genres', genreOptions)}</div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Stimmung</legend>
+              <p>Mehrere Stimmungen werden mit „oder“ verknüpft.</p>
+              <div class="facet-options facet-options--moods" data-facet-options="moods">${facetOptionsMarkup('moods', moodOptions)}</div>
+            </fieldset>
+
+            <label class="rating-filter">Mindestbewertung
+              <select name="minimumRating">
+                <option value=""${draftFilter.minimumRating === null ? ' selected' : ''}>Beliebig</option>
+                ${[3, 3.5, 4, 4.5].map((rating) => `<option value="${rating}"${draftFilter.minimumRating === rating ? ' selected' : ''}>${String(rating).replace('.', ',')} und besser</option>`).join('')}
+              </select>
+              <small>Bücher ohne Bewertung werden bei einer Mindestbewertung ausgeschlossen.</small>
+            </label>
+          </div>
+
+          <div class="filter-actions">
+            <p data-filter-count>${previewCount.toLocaleString('de-DE')} ${previewCount === 1 ? 'Buch entspricht' : 'Bücher entsprechen'} dem Filter</p>
+            <div>
+              <button class="filter-reset" type="button">Filter zurücksetzen</button>
+              <button class="filter-cancel" type="button">Abbrechen</button>
+              <button class="filter-apply" type="submit"${previewCount === 0 ? ' disabled' : ''}>${previewCount.toLocaleString('de-DE')} Bücher anzeigen</button>
+            </div>
+          </div>
+        </form>
+      </section>
+    </div>
+  `;
+}
+
+function filterButtonMarkup() {
+  const active = hasActiveBookFilter(activeFilter);
+  return `
+    <button class="filter-toggle${active ? ' filter-toggle--active' : ''}" type="button" aria-label="${active ? `Aktiven Filter ändern, ${books.length} Bücher sichtbar` : 'Bücher filtern'}" title="${active ? 'Filter ändern oder zurücksetzen' : 'Bücher filtern'}">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M7 12h10M10 18h4" /></svg>
+      ${active ? '<span aria-hidden="true"></span>' : ''}
+    </button>
+  `;
+}
+
 function render() {
   const current = selection(shelfSeed);
   app.innerHTML = `
@@ -230,13 +353,14 @@ function render() {
           <p class="eyebrow">${escapeHtml(shelfPresentation.eyebrow)}</p>
           <h1>${escapeHtml(shelfPresentation.title)}</h1>
         </div>
-        <p class="book-count">${books.length.toLocaleString('de-DE')} Bücher</p>
+        <p class="book-count">${books.length.toLocaleString('de-DE')}${hasActiveBookFilter(activeFilter) ? ` von ${allBooks.length.toLocaleString('de-DE')}` : ''} Bücher</p>
       </header>
+      ${filterButtonMarkup()}
 
       <section class="shelf-region" aria-live="polite">
         <button class="nav nav-previous" aria-label="Vorherige Auswahl">‹</button>
         <div class="books" role="list">
-          ${current.map((book) => `
+          ${current.length ? current.map((book) => `
             <button
               class="spine spine--${book.spineLayout || 'split'}"
               role="listitem"
@@ -247,7 +371,7 @@ function render() {
               <span class="spine-title ${caseClass('title', book.titleCase)}">${escapeHtml(spineTitle(book.title))}</span>
               <span class="spine-author ${caseClass('author', book.authorCase)}">${escapeHtml(book.authors.split(',')[0])}</span>
             </button>
-          `).join('')}
+          `).join('') : '<p class="no-filter-results">Keine Bücher entsprechen dem aktuellen Filter.</p>'}
         </div>
         <button class="nav nav-next" aria-label="Neue Auswahl">›</button>
         <div class="shelf-board"></div>
@@ -261,6 +385,7 @@ function render() {
     </section>
     ${spotlightBook ? spotlightMarkup(spotlightBook, spotlightExpanded) : ''}
     ${hiddenBooks ? hiddenManagerMarkup(hiddenBooks) : ''}
+    ${filterOpen ? filterPanelMarkup() : ''}
   `;
   bindEvents();
 }
@@ -377,6 +502,7 @@ function bindEvents() {
   });
   document.querySelector('.nav-next')?.addEventListener('click', nextShelf);
   document.querySelector('.nav-previous')?.addEventListener('click', previousShelf);
+  document.querySelector('.filter-toggle')?.addEventListener('click', openFilter);
   document.querySelectorAll('.spotlight-backdrop, .put-back').forEach((element) => {
     element.addEventListener('click', closeSpotlight);
   });
@@ -389,7 +515,120 @@ function bindEvents() {
   hiddenForm?.addEventListener('submit', unhideSelectedBooks);
   const image = document.querySelector<HTMLImageElement>('.cover');
   image?.addEventListener('error', () => image.remove());
+  bindFilterPanel();
   window.requestAnimationFrame(centerSingleLineTitles);
+}
+
+function openFilter() {
+  window.clearTimeout(spotlightTimer);
+  spotlightBook = null;
+  spotlightExpanded = false;
+  hiddenBooks = null;
+  draftFilter = cloneFilter(activeFilter);
+  filterOpen = true;
+  render();
+}
+
+function closeFilter() {
+  if (!filterOpen) return;
+  filterOpen = false;
+  draftFilter = cloneFilter(activeFilter);
+  render();
+  scheduleAmbient(AUTO_REPEAT_MS);
+}
+
+function updateFilterPreview() {
+  const count = filterBooks(allBooks, draftFilter).length;
+  const countLabel = document.querySelector<HTMLElement>('[data-filter-count]');
+  if (countLabel) countLabel.textContent = `${count.toLocaleString('de-DE')} ${count === 1 ? 'Buch entspricht' : 'Bücher entsprechen'} dem Filter`;
+  const applyButton = document.querySelector<HTMLButtonElement>('.filter-apply');
+  if (applyButton) {
+    applyButton.textContent = `${count.toLocaleString('de-DE')} ${count === 1 ? 'Buch' : 'Bücher'} anzeigen`;
+    applyButton.disabled = count === 0;
+  }
+}
+
+function updateFacetVisibility(kind: 'genres' | 'moods', query = '') {
+  const normalizedQuery = normalizeFilterText(query);
+  document.querySelectorAll<HTMLButtonElement>(`[data-facet-options="${kind}"] [data-filter-facet]`).forEach((button) => {
+    const matches = !normalizedQuery || button.dataset.filterNormalized?.includes(normalizedQuery);
+    const selected = button.getAttribute('aria-pressed') === 'true';
+    const popular = button.dataset.popular === 'true';
+    button.hidden = kind === 'genres' ? !(selected || (matches && (Boolean(normalizedQuery) || popular))) : false;
+  });
+}
+
+function toggleDraftFacet(button: HTMLButtonElement) {
+  const kind = button.dataset.filterFacet as 'genres' | 'moods';
+  const value = button.dataset.filterValue || '';
+  if (!['genres', 'moods'].includes(kind) || !value) return;
+  const normalized = normalizeFilterText(value);
+  const index = draftFilter[kind].findIndex((entry) => normalizeFilterText(entry) === normalized);
+  if (index >= 0) draftFilter[kind].splice(index, 1);
+  else draftFilter[kind].push(value);
+  const selected = index < 0;
+  button.classList.toggle('facet-option--selected', selected);
+  button.setAttribute('aria-pressed', String(selected));
+  const search = document.querySelector<HTMLInputElement>(`[data-facet-search="${kind}"]`);
+  updateFacetVisibility(kind, search?.value);
+  updateFilterPreview();
+}
+
+function updateDraftTextField(element: HTMLInputElement | HTMLSelectElement) {
+  if (element.name === 'minimumRating') {
+    draftFilter.minimumRating = element.value ? Number(element.value) : null;
+  } else if (element.name === 'title' || element.name === 'author' || element.name === 'description') {
+    draftFilter[element.name] = element.value;
+  }
+  updateFilterPreview();
+}
+
+function restartFilteredShelf() {
+  shelfSeed = hash(`${Date.now()}:${JSON.stringify(activeFilter)}`);
+  seedHistory = [shelfSeed];
+  historyIndex = 0;
+  spotlightBook = null;
+  spotlightExpanded = false;
+  filterOpen = false;
+  render();
+  scheduleAmbient(AUTO_REPEAT_MS);
+  scheduleShelfRotation();
+}
+
+function applyDraftFilter(event: SubmitEvent) {
+  event.preventDefault();
+  const nextFilter = cloneFilter(draftFilter);
+  const nextBooks = filterBooks(allBooks, nextFilter);
+  if (nextBooks.length === 0) return;
+  activeFilter = nextFilter;
+  books = nextBooks;
+  storeFilter(activeFilter);
+  restartFilteredShelf();
+}
+
+function resetFilter() {
+  activeFilter = cloneFilter(EMPTY_BOOK_FILTER as BookFilter);
+  draftFilter = cloneFilter(activeFilter);
+  books = [...allBooks];
+  storeFilter(activeFilter);
+  restartFilteredShelf();
+}
+
+function bindFilterPanel() {
+  if (!filterOpen) return;
+  document.querySelector('.filter-backdrop')?.addEventListener('click', closeFilter);
+  document.querySelector('.filter-cancel')?.addEventListener('click', closeFilter);
+  document.querySelector('.filter-reset')?.addEventListener('click', resetFilter);
+  document.querySelector<HTMLFormElement>('.filter-form')?.addEventListener('submit', applyDraftFilter);
+  document.querySelectorAll<HTMLInputElement | HTMLSelectElement>('.filter-form input[name], .filter-form select[name]').forEach((element) => {
+    element.addEventListener(element instanceof HTMLSelectElement ? 'change' : 'input', () => updateDraftTextField(element));
+  });
+  document.querySelectorAll<HTMLButtonElement>('[data-filter-facet]').forEach((button) => {
+    button.addEventListener('click', () => toggleDraftFacet(button));
+  });
+  document.querySelectorAll<HTMLInputElement>('[data-facet-search]').forEach((input) => {
+    input.addEventListener('input', () => updateFacetVisibility(input.dataset.facetSearch as 'genres' | 'moods', input.value));
+  });
 }
 
 function bindHideButton() {
@@ -458,7 +697,10 @@ function closeSpotlight() {
 async function loadVisibleBooks() {
   const response = await fetch(appUrl('api/books'));
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
-  books = (await response.json()).books;
+  allBooks = (await response.json()).books;
+  genreOptions = collectFacetOptions(allBooks, 'genres');
+  moodOptions = collectFacetOptions(allBooks, 'moods');
+  books = filterBooks(allBooks, activeFilter);
 }
 
 async function hideCurrentBook() {
@@ -542,9 +784,10 @@ function previousShelf() {
 }
 
 function ambientSpotlight() {
-  if (spotlightBook || hiddenBooks || document.hidden) return scheduleAmbient(AUTO_REPEAT_MS);
+  if (spotlightBook || hiddenBooks || filterOpen || document.hidden) return scheduleAmbient(AUTO_REPEAT_MS);
   const current = selection(shelfSeed);
-  const book = current[Math.floor(Math.random() * current.length)];
+  const nextBookId = ambientBookBag.next(current.map((book) => book.id));
+  const book = current.find((candidate) => candidate.id === nextBookId);
   if (book) showSpotlight(book.id);
 }
 
@@ -562,7 +805,7 @@ document.addEventListener('pointerdown', (event) => {
   pointerStart = { x: event.clientX, y: event.clientY };
 });
 document.addEventListener('pointerup', (event) => {
-  if (!pointerStart || spotlightBook) return;
+  if (!pointerStart || spotlightBook || hiddenBooks || filterOpen) return;
   const dx = event.clientX - pointerStart.x;
   const dy = event.clientY - pointerStart.y;
   pointerStart = null;
@@ -571,6 +814,8 @@ document.addEventListener('pointerup', (event) => {
   else previousShelf();
 });
 document.addEventListener('keydown', (event) => {
+  if (event.key === 'Escape' && filterOpen) return closeFilter();
+  if (filterOpen) return;
   if (event.key === 'ArrowLeft') previousShelf();
   if (event.key === 'ArrowRight') nextShelf();
   if (event.key === 'Escape') hiddenBooks ? closeHiddenManager() : closeSpotlight();

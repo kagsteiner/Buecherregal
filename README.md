@@ -143,6 +143,19 @@ Antippen von Cover oder Titel öffnet die gespeicherten Hardcover-Details und st
 den automatischen Schließtimer. Direkt aus dem Regal angetippte Bücher öffnen die
 Detailansicht sofort.
 
+### Regal filtern
+
+Der dezente Filter oben rechts schränkt das Regal nach Titel, Autor,
+Inhaltsbeschreibung, Genre, Stimmung und Mindestbewertung ein. Verschiedene
+Filtergruppen werden mit UND verknüpft; mehrere Genres beziehungsweise
+Stimmungen innerhalb ihrer Gruppe mit ODER. Die Auswahl geschieht vollständig
+im Browser auf den bereits geladenen Buchdaten.
+
+Der aktive Filter bleibt im lokalen Browser-Speicher erhalten und wird nach
+einem Neustart wieder angewendet. „Filter zurücksetzen“ löscht diesen Zustand.
+Die automatische Präsentation mischt die Bücher des jeweils sichtbaren Regals
+und zeigt jedes einmal, bevor eine neue zufällige Reihenfolge beginnt.
+
 ### QR-Code und öffentliche Buchseite
 
 Die erweiterte Buchansicht zeigt einen lokal erzeugten QR-Code. Er verweist auf

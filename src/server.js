@@ -3,7 +3,7 @@ import { createServer } from 'node:http';
 import { extname, join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { handleBooksApi } from './books-api.js';
-import { authConfiguration, createAuthHandler, isAuthenticatedRequest } from './auth.js';
+import { authConfiguration, createAuthHandler } from './auth.js';
 import { coversPath } from './config.js';
 import { handlePublicBook } from './public-books.js';
 
@@ -33,7 +33,6 @@ function sendFile(response, path) {
 createServer(async (request, response) => {
   if (await handlePublicBook(request, response, {
     secret: authentication.secret,
-    authenticated: isAuthenticatedRequest(request, authentication),
   })) return;
   if (!await handleAuth(request, response)) return;
   if (await handleBooksApi(request, response, { publicTokenSecret: authentication.secret })) return;

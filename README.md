@@ -147,17 +147,21 @@ Detailansicht sofort.
 
 Die erweiterte Buchansicht zeigt einen lokal erzeugten QR-Code. Er verweist auf
 eine mobile, ohne Anmeldung erreichbare Seite mit den gespeicherten Buchdetails.
-Open Library steht dort bewusst an erster Stelle, danach folgt Hardcover. Die
-öffentliche URL enthält keine fortlaufende Buch-ID, sondern einen aus
+Die öffentliche URL enthält keine fortlaufende Buch-ID, sondern einen aus
 `SESSION_SECRET` abgeleiteten und nicht erratbaren Token. Wird das
 Session-Geheimnis geändert, ändern sich daher auch diese öffentlichen Links.
 
-Gäste sehen auf der öffentlichen Seite keine Amazon- oder Kindle-Funktion.
-Familienmitglieder können den Familienzugang verwenden; nach der Anmeldung kehren
-sie direkt zum Buch zurück. Für Bücher mit ASIN erscheint anschließend
-„In Kindle öffnen“. Dabei wird ein von Kindle-Apps verbreitet unterstützter, aber
-von Amazon nicht offiziell dokumentierter App-Link verwendet. Als manueller
-Fallback steht der offizielle Amazon-Link zur Buchdetailseite bereit.
+Mit „Auf diesem Handy merken“ entsteht pro Browser eine persönliche Leseliste
+unter `/merkliste`; danach folgen weiterhin die Links zu Open Library und
+Hardcover. Gespeichert werden die gemerkten Bücher ausschließlich im lokalen
+Browser-Speicher. Andere Geräte und Browser besitzen getrennte Listen, und beim
+Löschen der Browserdaten geht die jeweilige Liste verloren.
+
+Die Leseliste enthält eine kurze Anleitung für iOS und Android, um sie einmalig
+zum Home-Bildschirm hinzuzufügen. Manifest, App-Icon und Service Worker erlauben
+auf unterstützten Android-Browsern außerdem die Installation als kleine Web-App.
+Ein defekter, von Amazon nicht offiziell unterstützter Kindle-Deep-Link wird
+bewusst nicht mehr angeboten.
 
 ## Installation auf einem VPS
 

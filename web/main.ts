@@ -330,7 +330,7 @@ function hardcoverDetailsMarkup(book: Book) {
       <img src="${appUrl(`api/books/${book.id}/qr`)}" alt="QR-Code für ${escapeHtml(book.title)}" />
       <div>
         <strong>Auf dem Handy ansehen</strong>
-        <p>QR-Code scannen, um das Buch bei Open Library oder Hardcover zu finden. Familienmitglieder können es dort auch direkt in Kindle öffnen.</p>
+        <p>QR-Code scannen, um das Buch auf diesem Handy zu merken oder bei Open Library und Hardcover anzusehen.</p>
         <a href="${appUrl(book.publicPath)}" target="_blank" rel="noopener">Öffentliche Buchseite öffnen</a>
       </div>
     </section>

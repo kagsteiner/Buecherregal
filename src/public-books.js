@@ -1,7 +1,7 @@
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { createReadStream, existsSync, statSync } from 'node:fs';
 import { extname, resolve, sep } from 'node:path';
-import { coversPath } from './config.js';
+import { coversPath, projectRoot } from './config.js';
 import { listBooks } from './books.js';
 
 export const DEVELOPMENT_PUBLIC_TOKEN_SECRET = 'local-bookshelf-public-links-only';
@@ -83,15 +83,18 @@ function ratingMarkup(book) {
   return `<p class="rating"><strong>★ ${rating}</strong> · ${count} Bewertungen bei Hardcover</p>`;
 }
 
-function publicPage({ request, book, token, authenticated }) {
+function manifestPath(prefix) {
+  return `${prefix}/manifest.webmanifest`;
+}
+
+function publicPage({ request, book, token }) {
   const prefix = requestPrefix(request);
   const bookPath = `/buch/${token}`;
   const localBookPath = `${prefix}${bookPath}`;
-  const familyLogin = `${prefix}/auth/login?next=${encodeURIComponent(bookPath)}`;
-  const kindleAvailable = authenticated && /^[A-Z0-9]{10}$/i.test(book.asin || '');
   const pages = book.pageCountKnown ? `${book.pageCount} Seiten` : '';
-  const amazonUrl = kindleAvailable ? `https://www.amazon.de/dp/${encodeURIComponent(book.asin)}` : '';
-  const kindleUrl = kindleAvailable ? `kindle://book?action=open&asin=${encodeURIComponent(book.asin)}` : '';
+  const libraryUrl = `${prefix}/merkliste`;
+  const openLibrary = openLibraryUrl(book);
+  const hardcover = hardcoverUrl(book);
   return `<!doctype html>
 <html lang="de">
 <head>
@@ -99,6 +102,8 @@ function publicPage({ request, book, token, authenticated }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#17120e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <link rel="manifest" href="${manifestPath(prefix)}" />
   <title>${escapeHtml(book.title)} · Unser Bücherregal</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f4ecdf; background: #17120e; }
@@ -116,17 +121,17 @@ function publicPage({ request, book, token, authenticated }) {
     .chips span { padding: 6px 10px; border: 1px solid #c6a77c45; border-radius: 999px; color: #cdbda8; background: #c6a77c12; font-size: .72rem; }
     .rating { color: #9c8e7e; font-size: .76rem; }.rating strong { color: #e1bc76; font-size: 1rem; }
     .actions { display: grid; gap: 10px; margin-top: 28px; }
-    .button { display: block; padding: 14px 17px; border: 1px solid #816f57; border-radius: 10px; color: #f1dfc5; background: #2d231b; font-weight: 720; text-align: center; text-decoration: none; }
+    .button { display: block; width: 100%; padding: 14px 17px; border: 1px solid #816f57; border-radius: 10px; color: #f1dfc5; background: #2d231b; font: inherit; font-weight: 720; text-align: center; text-decoration: none; cursor: pointer; }
     .button.primary { border-color: #c5a06e; color: #21160e; background: #d5aa75; }
-    .button.kindle { border-color: #86b4be; color: #e8fbff; background: #24424a; }
-    .family { margin-top: 30px; padding-top: 20px; border-top: 1px solid #ffffff16; }
-    .family p { margin: 0 0 10px; color: #95877a; font-size: .76rem; line-height: 1.45; }
-    .family-login { color: #bfa98c; font-size: .78rem; }
-    .fallback { color: #938575; font-size: .72rem; text-align: center; }
-    @media (max-width: 620px) { .book { grid-template-columns: 34vw minmax(0, 1fr); gap: 20px; }.description, .chips, .rating, .actions, .family { grid-column: 1 / -1; }.cover { position: sticky; top: 18px; } h1 { font-size: clamp(1.8rem, 9vw, 3.2rem); } }
+    .button.saved { border-color: #789879; color: #e8f5e6; background: #29432e; }
+    .list-link { display: block; margin-top: 13px; color: #c9ad88; font-size: .82rem; text-align: center; }
+    .install-hint { margin-top: 20px; padding: 15px; border: 1px solid #8c714d66; border-radius: 10px; color: #b9aa98; background: #211a14; font-size: .78rem; line-height: 1.5; }
+    .install-hint strong { display: block; margin-bottom: 4px; color: #e5d2b8; }
+    .install-hint[hidden] { display: none; }
+    @media (max-width: 620px) { .book { grid-template-columns: 34vw minmax(0, 1fr); gap: 20px; }.description, .chips, .rating, .actions { grid-column: 1 / -1; }.cover { position: sticky; top: 18px; } h1 { font-size: clamp(1.8rem, 9vw, 3.2rem); } }
   </style>
 </head>
-<body>
+<body data-page="book" data-prefix="${prefix}">
   <main>
     <article class="book">
       <img class="cover" src="${localBookPath}/cover" alt="Cover von ${escapeHtml(book.title)}" />
@@ -139,26 +144,131 @@ function publicPage({ request, book, token, authenticated }) {
       ${book.description ? `<p class="description">${escapeHtml(book.description)}</p>` : ''}
       ${chipsMarkup(book)}
       ${ratingMarkup(book)}
-      <nav class="actions" aria-label="Buch bei anderen Diensten ansehen">
-        <a class="button primary" href="${escapeHtml(openLibraryUrl(book))}">Bei Open Library ansehen</a>
-        <a class="button" href="${escapeHtml(hardcoverUrl(book))}">Bei Hardcover ansehen</a>
+      <nav class="actions" aria-label="Buch merken oder bei anderen Diensten ansehen">
+        <button
+          class="button primary"
+          type="button"
+          data-save-book
+          data-token="${token}"
+          data-title="${escapeHtml(book.title)}"
+          data-authors="${escapeHtml(book.authors)}"
+          data-book-path="${localBookPath}"
+          data-cover-path="${localBookPath}/cover"
+          data-open-library="${escapeHtml(openLibrary)}"
+          data-hardcover="${escapeHtml(hardcover)}"
+        >Auf diesem Handy merken</button>
+        <a class="button" href="${escapeHtml(openLibrary)}">Bei Open Library ansehen</a>
+        <a class="button" href="${escapeHtml(hardcover)}">Bei Hardcover ansehen</a>
+        <a class="list-link" href="${libraryUrl}">Meine Leseliste <span data-list-count></span></a>
       </nav>
-      <section class="family">
-        ${kindleAvailable ? `
-          <p>Nur für unsere Familie: Das Buch ist bereits in unserer Kindle-Bibliothek und kann direkt in der Kindle-App geöffnet werden.</p>
-          <a class="button kindle" href="${kindleUrl}">In Kindle öffnen</a>
-          <p class="fallback">Falls sich die App nicht öffnet: <a href="${amazonUrl}">bei Amazon ansehen</a>.</p>
-        ` : authenticated ? `
-          <p>Für dieses Buch ist leider kein Kindle-Direktlink hinterlegt.</p>
-        ` : `
-          <p>Familienmitglieder können sich anmelden, um dieses Buch direkt in Kindle zu öffnen.</p>
-          <a class="family-login" href="${familyLogin}">Familienzugang</a>
-        `}
-      </section>
+      <aside class="install-hint" data-install-hint hidden>
+        <strong>Damit du die Liste später wiederfindest</strong>
+        Füge „Meine Leseliste“ einmalig zum Home-Bildschirm hinzu. Die genaue Anleitung findest du in deiner Leseliste.
+      </aside>
     </article>
   </main>
+  <script src="${prefix}/reading-list.js" defer></script>
 </body>
 </html>`;
+}
+
+function readingListPage(request) {
+  const prefix = requestPrefix(request);
+  return `<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="robots" content="noindex, nofollow" />
+  <meta name="theme-color" content="#17120e" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Leseliste" />
+  <link rel="manifest" href="${manifestPath(prefix)}" />
+  <title>Meine Leseliste · Unser Bücherregal</title>
+  <style>
+    :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f4ecdf; background: #17120e; }
+    * { box-sizing: border-box; }
+    body { min-width: 300px; min-height: 100svh; margin: 0; background: radial-gradient(circle at 50% 7%, #392b21, #17120e 50%, #0d0a08); }
+    main { width: min(760px, 100%); margin: 0 auto; padding: max(34px, env(safe-area-inset-top)) 20px max(48px, env(safe-area-inset-bottom)); }
+    .eyebrow { margin: 0 0 9px; color: #c6a77c; font-size: .7rem; font-weight: 700; letter-spacing: .18em; text-transform: uppercase; }
+    h1 { margin: 0; font: 400 clamp(2.7rem, 10vw, 5rem)/.95 Georgia, serif; letter-spacing: -.03em; }
+    .intro { max-width: 42em; margin: 17px 0 28px; color: #a99a89; font-size: .88rem; line-height: 1.55; }
+    .reading-list { display: grid; gap: 12px; }
+    .reading-item { display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 16px; padding: 13px; border: 1px solid #ffffff16; border-radius: 12px; background: #211a15d9; }
+    .reading-item img { width: 76px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 2px 5px 5px 2px; background: #30261e; }
+    .reading-item h2 { margin: 2px 0 5px; color: #eee1cf; font: 400 1.22rem/1.12 Georgia, serif; }
+    .reading-item .author { margin: 0 0 13px; color: #9f9181; font-size: .76rem; }
+    .item-actions { display: flex; flex-wrap: wrap; gap: 7px; }
+    .item-actions a, .item-actions button { padding: 7px 9px; border: 1px solid #755f48; border-radius: 7px; color: #d8c2a4; background: transparent; font: inherit; font-size: .68rem; text-decoration: none; cursor: pointer; }
+    .item-actions .remove { border-color: #70483e; color: #cda89c; }
+    .empty { padding: 26px; border: 1px dashed #806c54; border-radius: 12px; color: #9e8e7c; text-align: center; }
+    .install { margin-top: 30px; padding: 20px; border: 1px solid #8c714d55; border-radius: 12px; background: #211a14; }
+    .install h2 { margin: 0 0 9px; font: 400 1.45rem Georgia, serif; }
+    .install p, .install li { color: #aa9a88; font-size: .78rem; line-height: 1.5; }
+    .install ol { margin: 10px 0 0; padding-left: 20px; }
+    .install-app { display: none; width: 100%; margin-top: 12px; padding: 11px; border: 1px solid #c5a06e; border-radius: 9px; color: #21160e; background: #d5aa75; font: inherit; font-weight: 720; cursor: pointer; }
+    .install-app.available { display: block; }
+    .privacy { margin-top: 18px; color: #756a5f; font-size: .68rem; line-height: 1.45; }
+    @media (max-width: 480px) { .reading-item { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 10px; }.reading-item img { width: 64px; } }
+  </style>
+</head>
+<body data-page="list" data-prefix="${prefix}">
+  <main>
+    <p class="eyebrow">Unser Bücherregal</p>
+    <h1>Meine Leseliste</h1>
+    <p class="intro">Diese Bücher hast du auf diesem Handy gemerkt. Nimm die Liste später mit zu deinem Kindle und suche dort nach Titel oder Autor.</p>
+    <section class="reading-list" data-reading-list aria-live="polite"></section>
+    <section class="install">
+      <h2>Später schnell wiederfinden</h2>
+      <p>Füge diese Seite einmalig zum Home-Bildschirm hinzu. Danach öffnest du deine Leseliste wie eine App.</p>
+      <ol>
+        <li><strong>iPhone/iPad:</strong> In Safari auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen.</li>
+        <li><strong>Android:</strong> Im Browsermenü „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen.</li>
+      </ol>
+      <button class="install-app" type="button" data-install-app>Leseliste installieren</button>
+    </section>
+    <p class="privacy">Die Liste wird ausschließlich in diesem Browser gespeichert. Andere Geräte und Browser haben eigene Listen. Beim Löschen der Browserdaten wird auch diese Liste gelöscht.</p>
+  </main>
+  <script src="${prefix}/reading-list.js" defer></script>
+</body>
+</html>`;
+}
+
+function sendPublicAsset(response, filename, contentType, extraHeaders = {}) {
+  const path = resolve(projectRoot, 'public', filename);
+  if (!path.startsWith(`${resolve(projectRoot, 'public')}${sep}`) || !existsSync(path) || !statSync(path).isFile()) {
+    response.statusCode = 404;
+    response.end('Not found');
+    return;
+  }
+  response.statusCode = 200;
+  response.setHeader('Content-Type', contentType);
+  response.setHeader('Cache-Control', 'public, max-age=3600');
+  for (const [name, value] of Object.entries(extraHeaders)) response.setHeader(name, value);
+  createReadStream(path).pipe(response);
+}
+
+function sendManifest(request, response) {
+  const prefix = requestPrefix(request);
+  response.statusCode = 200;
+  response.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
+  response.setHeader('Cache-Control', 'public, max-age=3600');
+  response.end(JSON.stringify({
+    name: 'Bücherregal – Meine Leseliste',
+    short_name: 'Leseliste',
+    description: 'Bücher aus unserem Bücherregal für später merken.',
+    start_url: `${prefix}/merkliste`,
+    scope: `${prefix}/`,
+    display: 'standalone',
+    background_color: '#17120e',
+    theme_color: '#17120e',
+    icons: [{
+      src: `${prefix}/reading-list-icon.svg`,
+      sizes: 'any',
+      type: 'image/svg+xml',
+      purpose: 'any maskable',
+    }],
+  }));
 }
 
 function sendCover(response, book) {
@@ -184,8 +294,34 @@ function sendCover(response, book) {
   response.end('Not found');
 }
 
-export async function handlePublicBook(request, response, { secret, authenticated = false, databasePath } = {}) {
+export async function handlePublicBook(request, response, { secret, databasePath } = {}) {
   const url = new URL(request.url, 'http://localhost');
+  if (request.method === 'GET' && url.pathname === '/reading-list.js') {
+    sendPublicAsset(response, 'reading-list.js', 'text/javascript; charset=utf-8');
+    return true;
+  }
+  if (request.method === 'GET' && url.pathname === '/reading-list-sw.js') {
+    sendPublicAsset(response, 'reading-list-sw.js', 'text/javascript; charset=utf-8', {
+      'Service-Worker-Allowed': `${requestPrefix(request)}/`,
+    });
+    return true;
+  }
+  if (request.method === 'GET' && url.pathname === '/reading-list-icon.svg') {
+    sendPublicAsset(response, 'reading-list-icon.svg', 'image/svg+xml; charset=utf-8');
+    return true;
+  }
+  if (request.method === 'GET' && url.pathname === '/manifest.webmanifest') {
+    sendManifest(request, response);
+    return true;
+  }
+  if (request.method === 'GET' && /^\/merkliste\/?$/.test(url.pathname)) {
+    response.statusCode = 200;
+    response.setHeader('Content-Type', 'text/html; charset=utf-8');
+    response.setHeader('Cache-Control', 'private, no-store');
+    response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' https:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+    response.end(readingListPage(request));
+    return true;
+  }
   const match = url.pathname.match(/^\/buch\/([A-Za-z0-9_-]{24})(\/cover)?\/?$/);
   if (!match || request.method !== 'GET') return false;
   const book = findPublicBook(match[1], secret, databasePath);
@@ -203,9 +339,9 @@ export async function handlePublicBook(request, response, { secret, authenticate
   response.statusCode = 200;
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
   response.setHeader('Cache-Control', 'private, no-store');
-  response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' https:; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-  response.end(publicPage({ request, book, token: match[1], authenticated }));
+  response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' https:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+  response.end(publicPage({ request, book, token: match[1] }));
   return true;
 }
 
-export const publicBookInternals = { publicPage, openLibraryUrl, hardcoverUrl };
+export const publicBookInternals = { publicPage, readingListPage, openLibraryUrl, hardcoverUrl };

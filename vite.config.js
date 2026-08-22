@@ -9,7 +9,6 @@ function booksApi() {
       server.middlewares.use(async (request, response, next) => {
         if (await handlePublicBook(request, response, {
           secret: DEVELOPMENT_PUBLIC_TOKEN_SECRET,
-          authenticated: true,
         })) return;
         if (!await handleBooksApi(request, response)) next();
       });

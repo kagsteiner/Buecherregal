@@ -34,7 +34,7 @@ test('public URLs honor HTTPS reverse-proxy prefixes', () => {
   );
 });
 
-test('guest pages prefer Open Library and keep Kindle behind family login', () => {
+test('public pages offer the device list before Open Library and Hardcover', () => {
   const request = {
     url: '/buch/token',
     headers: { 'x-forwarded-prefix': '/buecherregal' },
@@ -53,12 +53,22 @@ test('guest pages prefer Open Library and keep Kindle behind family login', () =
     ratingsCount: 1200,
     hardcoverSlug: 'the-stone-sky',
   };
-  const guest = publicBookInternals.publicPage({ request, book, token: 'a'.repeat(24), authenticated: false });
-  assert.ok(guest.indexOf('Bei Open Library ansehen') < guest.indexOf('Bei Hardcover ansehen'));
-  assert.doesNotMatch(guest, /kindle:\/\//);
-  assert.match(guest, /Familienzugang/);
+  const page = publicBookInternals.publicPage({ request, book, token: 'a'.repeat(24) });
+  assert.ok(page.indexOf('Auf diesem Handy merken') < page.indexOf('Bei Open Library ansehen'));
+  assert.ok(page.indexOf('Bei Open Library ansehen') < page.indexOf('Bei Hardcover ansehen'));
+  assert.match(page, /href="\/buecherregal\/merkliste"/);
+  assert.match(page, /src="\/buecherregal\/reading-list\.js"/);
+  assert.doesNotMatch(page, /kindle:\/\/|amazon\.de|Familienzugang/);
+});
 
-  const family = publicBookInternals.publicPage({ request, book, token: 'a'.repeat(24), authenticated: true });
-  assert.match(family, /kindle:\/\/book\?action=open&amp;asin=B01MSS7ZYG|kindle:\/\/book\?action=open&asin=B01MSS7ZYG/);
-  assert.match(family, /https:\/\/www\.amazon\.de\/dp\/B01MSS7ZYG/);
+test('reading list page explains browser-local persistence and home-screen access', () => {
+  const request = {
+    headers: { 'x-forwarded-prefix': '/buecherregal' },
+    socket: {},
+  };
+  const page = publicBookInternals.readingListPage(request);
+  assert.match(page, /Meine Leseliste/);
+  assert.match(page, /Zum Home-Bildschirm/);
+  assert.match(page, /ausschließlich in diesem Browser gespeichert/);
+  assert.match(page, /href="\/buecherregal\/manifest\.webmanifest"/);
 });

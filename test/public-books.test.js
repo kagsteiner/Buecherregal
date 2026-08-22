@@ -61,14 +61,15 @@ test('public pages offer the device list before Open Library and Hardcover', () 
   assert.doesNotMatch(page, /kindle:\/\/|amazon\.de|Familienzugang/);
 });
 
-test('reading list page explains browser-local persistence and home-screen access', () => {
+test('reading list page explains browser-local persistence and bookmarks', () => {
   const request = {
     headers: { 'x-forwarded-prefix': '/buecherregal' },
     socket: {},
   };
   const page = publicBookInternals.readingListPage(request);
   assert.match(page, /Meine Leseliste/);
-  assert.match(page, /Zum Home-Bildschirm/);
+  assert.match(page, /Lesezeichen hinzufügen/);
+  assert.match(page, /im selben Browser/);
   assert.match(page, /ausschließlich in diesem Browser gespeichert/);
-  assert.match(page, /href="\/buecherregal\/manifest\.webmanifest"/);
+  assert.doesNotMatch(page, /Home-Bildschirm|manifest\.webmanifest|App installieren/);
 });

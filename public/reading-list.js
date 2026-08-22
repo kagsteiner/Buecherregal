@@ -1,7 +1,6 @@
 const STORAGE_KEY = 'bookshelf.reading-list.v1';
 const body = document.body;
 const prefix = body.dataset.prefix || '';
-let installPrompt = null;
 
 function readList() {
   try {
@@ -72,7 +71,7 @@ function bindBookPage() {
     else entries.unshift(currentBook(button));
     writeList(entries);
     updateSaveButton(button, entries);
-    if (index < 0) document.querySelector('[data-install-hint]')?.removeAttribute('hidden');
+    if (index < 0) document.querySelector('[data-bookmark-hint]')?.removeAttribute('hidden');
   });
 }
 
@@ -149,24 +148,5 @@ function renderList() {
   });
 }
 
-function setupInstallation() {
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register(`${prefix}/reading-list-sw.js`, { scope: `${prefix}/` }).catch(() => {});
-  }
-  const installButton = document.querySelector('[data-install-app]');
-  window.addEventListener('beforeinstallprompt', (event) => {
-    event.preventDefault();
-    installPrompt = event;
-    installButton?.classList.add('available');
-  });
-  installButton?.addEventListener('click', async () => {
-    if (!installPrompt) return;
-    await installPrompt.prompt();
-    installPrompt = null;
-    installButton.classList.remove('available');
-  });
-}
-
 if (body.dataset.page === 'book') bindBookPage();
 if (body.dataset.page === 'list') renderList();
-setupInstallation();

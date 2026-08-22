@@ -83,10 +83,6 @@ function ratingMarkup(book) {
   return `<p class="rating"><strong>★ ${rating}</strong> · ${count} Bewertungen bei Hardcover</p>`;
 }
 
-function manifestPath(prefix) {
-  return `${prefix}/manifest.webmanifest`;
-}
-
 function publicPage({ request, book, token }) {
   const prefix = requestPrefix(request);
   const bookPath = `/buch/${token}`;
@@ -102,8 +98,6 @@ function publicPage({ request, book, token }) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#17120e" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <link rel="manifest" href="${manifestPath(prefix)}" />
   <title>${escapeHtml(book.title)} · Unser Bücherregal</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f4ecdf; background: #17120e; }
@@ -125,9 +119,9 @@ function publicPage({ request, book, token }) {
     .button.primary { border-color: #c5a06e; color: #21160e; background: #d5aa75; }
     .button.saved { border-color: #789879; color: #e8f5e6; background: #29432e; }
     .list-link { display: block; margin-top: 13px; color: #c9ad88; font-size: .82rem; text-align: center; }
-    .install-hint { margin-top: 20px; padding: 15px; border: 1px solid #8c714d66; border-radius: 10px; color: #b9aa98; background: #211a14; font-size: .78rem; line-height: 1.5; }
-    .install-hint strong { display: block; margin-bottom: 4px; color: #e5d2b8; }
-    .install-hint[hidden] { display: none; }
+    .bookmark-hint { margin-top: 20px; padding: 15px; border: 1px solid #8c714d66; border-radius: 10px; color: #b9aa98; background: #211a14; font-size: .78rem; line-height: 1.5; }
+    .bookmark-hint strong { display: block; margin-bottom: 4px; color: #e5d2b8; }
+    .bookmark-hint[hidden] { display: none; }
     @media (max-width: 620px) { .book { grid-template-columns: 34vw minmax(0, 1fr); gap: 20px; }.description, .chips, .rating, .actions { grid-column: 1 / -1; }.cover { position: sticky; top: 18px; } h1 { font-size: clamp(1.8rem, 9vw, 3.2rem); } }
   </style>
 </head>
@@ -161,9 +155,9 @@ function publicPage({ request, book, token }) {
         <a class="button" href="${escapeHtml(hardcover)}">Bei Hardcover ansehen</a>
         <a class="list-link" href="${libraryUrl}">Meine Leseliste <span data-list-count></span></a>
       </nav>
-      <aside class="install-hint" data-install-hint hidden>
+      <aside class="bookmark-hint" data-bookmark-hint hidden>
         <strong>Damit du die Liste später wiederfindest</strong>
-        Füge „Meine Leseliste“ einmalig zum Home-Bildschirm hinzu. Die genaue Anleitung findest du in deiner Leseliste.
+        Speichere „Meine Leseliste“ als Lesezeichen in diesem Browser. Die genaue Anleitung findest du in deiner Leseliste.
       </aside>
     </article>
   </main>
@@ -181,9 +175,6 @@ function readingListPage(request) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
   <meta name="robots" content="noindex, nofollow" />
   <meta name="theme-color" content="#17120e" />
-  <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-title" content="Leseliste" />
-  <link rel="manifest" href="${manifestPath(prefix)}" />
   <title>Meine Leseliste · Unser Bücherregal</title>
   <style>
     :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; color: #f4ecdf; background: #17120e; }
@@ -202,12 +193,10 @@ function readingListPage(request) {
     .item-actions a, .item-actions button { padding: 7px 9px; border: 1px solid #755f48; border-radius: 7px; color: #d8c2a4; background: transparent; font: inherit; font-size: .68rem; text-decoration: none; cursor: pointer; }
     .item-actions .remove { border-color: #70483e; color: #cda89c; }
     .empty { padding: 26px; border: 1px dashed #806c54; border-radius: 12px; color: #9e8e7c; text-align: center; }
-    .install { margin-top: 30px; padding: 20px; border: 1px solid #8c714d55; border-radius: 12px; background: #211a14; }
-    .install h2 { margin: 0 0 9px; font: 400 1.45rem Georgia, serif; }
-    .install p, .install li { color: #aa9a88; font-size: .78rem; line-height: 1.5; }
-    .install ol { margin: 10px 0 0; padding-left: 20px; }
-    .install-app { display: none; width: 100%; margin-top: 12px; padding: 11px; border: 1px solid #c5a06e; border-radius: 9px; color: #21160e; background: #d5aa75; font: inherit; font-weight: 720; cursor: pointer; }
-    .install-app.available { display: block; }
+    .bookmark { margin-top: 30px; padding: 20px; border: 1px solid #8c714d55; border-radius: 12px; background: #211a14; }
+    .bookmark h2 { margin: 0 0 9px; font: 400 1.45rem Georgia, serif; }
+    .bookmark p, .bookmark li { color: #aa9a88; font-size: .78rem; line-height: 1.5; }
+    .bookmark ol { margin: 10px 0 0; padding-left: 20px; }
     .privacy { margin-top: 18px; color: #756a5f; font-size: .68rem; line-height: 1.45; }
     @media (max-width: 480px) { .reading-item { grid-template-columns: 64px minmax(0, 1fr); gap: 12px; padding: 10px; }.reading-item img { width: 64px; } }
   </style>
@@ -218,14 +207,13 @@ function readingListPage(request) {
     <h1>Meine Leseliste</h1>
     <p class="intro">Diese Bücher hast du auf diesem Handy gemerkt. Nimm die Liste später mit zu deinem Kindle und suche dort nach Titel oder Autor.</p>
     <section class="reading-list" data-reading-list aria-live="polite"></section>
-    <section class="install">
+    <section class="bookmark">
       <h2>Später schnell wiederfinden</h2>
-      <p>Füge diese Seite einmalig zum Home-Bildschirm hinzu. Danach öffnest du deine Leseliste wie eine App.</p>
+      <p>Speichere diese Seite als normales Lesezeichen. Wichtig: Öffne das Lesezeichen später im selben Browser, denn nur dort liegt deine persönliche Leseliste.</p>
       <ol>
-        <li><strong>iPhone/iPad:</strong> In Safari auf „Teilen“ tippen und „Zum Home-Bildschirm“ wählen.</li>
-        <li><strong>Android:</strong> Im Browsermenü „App installieren“ oder „Zum Startbildschirm hinzufügen“ wählen.</li>
+        <li><strong>iPhone/iPad (Safari):</strong> Auf „Teilen“ tippen und „Lesezeichen hinzufügen“ wählen.</li>
+        <li><strong>Android:</strong> Im Menü deines Browsers den Stern oder „Lesezeichen hinzufügen“ wählen.</li>
       </ol>
-      <button class="install-app" type="button" data-install-app>Leseliste installieren</button>
     </section>
     <p class="privacy">Die Liste wird ausschließlich in diesem Browser gespeichert. Andere Geräte und Browser haben eigene Listen. Beim Löschen der Browserdaten wird auch diese Liste gelöscht.</p>
   </main>
@@ -246,29 +234,6 @@ function sendPublicAsset(response, filename, contentType, extraHeaders = {}) {
   response.setHeader('Cache-Control', 'public, max-age=3600');
   for (const [name, value] of Object.entries(extraHeaders)) response.setHeader(name, value);
   createReadStream(path).pipe(response);
-}
-
-function sendManifest(request, response) {
-  const prefix = requestPrefix(request);
-  response.statusCode = 200;
-  response.setHeader('Content-Type', 'application/manifest+json; charset=utf-8');
-  response.setHeader('Cache-Control', 'public, max-age=3600');
-  response.end(JSON.stringify({
-    name: 'Bücherregal – Meine Leseliste',
-    short_name: 'Leseliste',
-    description: 'Bücher aus unserem Bücherregal für später merken.',
-    start_url: `${prefix}/merkliste`,
-    scope: `${prefix}/`,
-    display: 'standalone',
-    background_color: '#17120e',
-    theme_color: '#17120e',
-    icons: [{
-      src: `${prefix}/reading-list-icon.svg`,
-      sizes: 'any',
-      type: 'image/svg+xml',
-      purpose: 'any maskable',
-    }],
-  }));
 }
 
 function sendCover(response, book) {
@@ -300,25 +265,11 @@ export async function handlePublicBook(request, response, { secret, databasePath
     sendPublicAsset(response, 'reading-list.js', 'text/javascript; charset=utf-8');
     return true;
   }
-  if (request.method === 'GET' && url.pathname === '/reading-list-sw.js') {
-    sendPublicAsset(response, 'reading-list-sw.js', 'text/javascript; charset=utf-8', {
-      'Service-Worker-Allowed': `${requestPrefix(request)}/`,
-    });
-    return true;
-  }
-  if (request.method === 'GET' && url.pathname === '/reading-list-icon.svg') {
-    sendPublicAsset(response, 'reading-list-icon.svg', 'image/svg+xml; charset=utf-8');
-    return true;
-  }
-  if (request.method === 'GET' && url.pathname === '/manifest.webmanifest') {
-    sendManifest(request, response);
-    return true;
-  }
   if (request.method === 'GET' && /^\/merkliste\/?$/.test(url.pathname)) {
     response.statusCode = 200;
     response.setHeader('Content-Type', 'text/html; charset=utf-8');
     response.setHeader('Cache-Control', 'private, no-store');
-    response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' https:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+    response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' https:; base-uri 'none'; frame-ancestors 'none'");
     response.end(readingListPage(request));
     return true;
   }
@@ -339,7 +290,7 @@ export async function handlePublicBook(request, response, { secret, databasePath
   response.statusCode = 200;
   response.setHeader('Content-Type', 'text/html; charset=utf-8');
   response.setHeader('Cache-Control', 'private, no-store');
-  response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' https:; manifest-src 'self'; worker-src 'self'; base-uri 'none'; frame-ancestors 'none'");
+  response.setHeader('Content-Security-Policy', "default-src 'none'; style-src 'unsafe-inline'; script-src 'self'; img-src 'self' https:; base-uri 'none'; frame-ancestors 'none'");
   response.end(publicPage({ request, book, token: match[1] }));
   return true;
 }

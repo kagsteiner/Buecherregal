@@ -157,9 +157,9 @@ Hardcover. Gespeichert werden die gemerkten Bücher ausschließlich im lokalen
 Browser-Speicher. Andere Geräte und Browser besitzen getrennte Listen, und beim
 Löschen der Browserdaten geht die jeweilige Liste verloren.
 
-Die Leseliste enthält eine kurze Anleitung für iOS und Android, um sie einmalig
-zum Home-Bildschirm hinzuzufügen. Manifest, App-Icon und Service Worker erlauben
-auf unterstützten Android-Browsern außerdem die Installation als kleine Web-App.
+Die Leseliste enthält eine kurze Anleitung für iOS und Android, um sie als
+normales Lesezeichen im verwendeten Browser zu speichern. Sie muss später im
+selben Browser geöffnet werden, damit dessen lokaler Speicher verfügbar bleibt.
 Ein defekter, von Amazon nicht offiziell unterstützter Kindle-Deep-Link wird
 bewusst nicht mehr angeboten.
 

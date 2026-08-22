@@ -62,6 +62,16 @@ type Book = {
   typographyConfidence: number | null;
   hiddenAt?: string | null;
   coverUrl: string | null;
+  hardcoverBookId: number | null;
+  hardcoverSlug: string | null;
+  description: string | null;
+  genres: string[];
+  moods: string[];
+  tags: string[];
+  rating: number | null;
+  ratingsCount: number | null;
+  ratingsDistribution: Array<{ rating: number; count: number }>;
+  hardcoverMatchConfidence: number | null;
 };
 
 type ShelfPresentation = {
@@ -106,6 +116,7 @@ let shelfSeed = Math.floor(Date.now() / 86_400_000);
 let seedHistory: number[] = [];
 let historyIndex = -1;
 let spotlightBook: Book | null = null;
+let spotlightExpanded = false;
 let spotlightTimer = 0;
 let ambientTimer = 0;
 let shelfTimer = 0;
@@ -247,29 +258,41 @@ function render() {
         <span>neu ›</span>
       </footer>
     </section>
-    ${spotlightBook ? spotlightMarkup(spotlightBook) : ''}
+    ${spotlightBook ? spotlightMarkup(spotlightBook, spotlightExpanded) : ''}
     ${hiddenBooks ? hiddenManagerMarkup(hiddenBooks) : ''}
   `;
   bindEvents();
 }
 
-function spotlightMarkup(book: Book) {
+function spotlightMarkup(book: Book, expanded: boolean) {
   const pages = book.pageCountKnown ? `${book.pageCount} Seiten` : 'Seitenzahl noch unbekannt';
+  const cover = `
+    ${book.coverUrl ? `<img class="cover" src="${book.coverUrl}" alt="Cover von ${escapeHtml(book.title)}" />` : ''}
+    <div class="cover-fallback" style="--cover-color:${spineColor(book)}">
+      <strong>${escapeHtml(book.title)}</strong><span>${escapeHtml(book.authors)}</span>
+    </div>
+  `;
+  const coverMarkup = expanded
+    ? `<div class="cover-wrap">${cover}</div>`
+    : `<button class="cover-wrap book-more" type="button" aria-label="Mehr über ${escapeHtml(book.title)} erfahren">
+        ${cover}<span class="more-hint">Antippen für mehr</span>
+      </button>`;
+  const titleMarkup = expanded
+    ? `<h2>${escapeHtml(book.title)}</h2>`
+    : `<button class="focus-title book-more" type="button"><h2>${escapeHtml(book.title)}</h2></button>`;
   return `
-    <div class="spotlight" role="dialog" aria-modal="true" aria-label="Buch im Fokus">
+    <div class="spotlight${expanded ? ' spotlight--expanded' : ''}" role="dialog" aria-modal="true" aria-label="Buch im Fokus">
       <button class="spotlight-backdrop" aria-label="Buch zurückstellen"></button>
-      <article class="book-focus">
-        <div class="cover-wrap">
-          ${book.coverUrl ? `<img class="cover" src="${book.coverUrl}" alt="Cover von ${escapeHtml(book.title)}" />` : ''}
-          <div class="cover-fallback" style="--cover-color:${spineColor(book)}">
-            <strong>${escapeHtml(book.title)}</strong><span>${escapeHtml(book.authors)}</span>
-          </div>
-        </div>
+      <article class="book-focus${expanded ? ' book-focus--expanded' : ''}">
+        ${coverMarkup}
         <div class="book-details">
-          <p class="eyebrow">Aus dem Regal</p>
-          <h2>${escapeHtml(book.title)}</h2>
-          <p class="focus-author">${escapeHtml(book.authors)}</p>
-          <p class="focus-pages">${pages}</p>
+          <div class="book-details-scroll">
+            <p class="eyebrow">${expanded ? 'Mehr über dieses Buch' : 'Aus dem Regal'}</p>
+            ${titleMarkup}
+            <p class="focus-author">${escapeHtml(book.authors)}</p>
+            <p class="focus-pages">${pages}</p>
+            ${expanded ? hardcoverDetailsMarkup(book) : '<p class="focus-more-copy">Cover oder Titel antippen, um mehr zu erfahren.</p>'}
+          </div>
           <div class="focus-actions">
             <button class="put-back">Zurück ins Regal</button>
             <button class="hide-book" title="Kurz drücken: Buch ausblenden. Gedrückt halten: ausgeblendete Bücher verwalten.">Ausblenden</button>
@@ -278,6 +301,32 @@ function spotlightMarkup(book: Book) {
         </div>
       </article>
     </div>
+  `;
+}
+
+function hardcoverDetailsMarkup(book: Book) {
+  const chips = [
+    ...book.genres.slice(0, 4).map((label) => ({ label, kind: 'genre' })),
+    ...book.moods.slice(0, 2).map((label) => ({ label, kind: 'mood' })),
+  ];
+  const hasRating = book.rating !== null && Number(book.ratingsCount) > 0;
+  const rating = hasRating ? book.rating!.toLocaleString('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 2 }) : '';
+  const count = hasRating ? Number(book.ratingsCount).toLocaleString('de-DE') : '';
+  if (!book.description && !chips.length && !hasRating) {
+    return '<p class="metadata-empty">Hardcover hat für dieses Buch noch keine weiteren Angaben.</p>';
+  }
+  return `
+    <section class="book-metadata" aria-label="Informationen von Hardcover">
+      ${book.description ? `<p class="book-description">${escapeHtml(book.description)}</p>` : ''}
+      ${chips.length ? `<div class="metadata-chips">${chips.map(({ label, kind }) =>
+        `<span class="metadata-chip metadata-chip--${kind}">${escapeHtml(label)}</span>`).join('')}</div>` : ''}
+      ${hasRating ? `
+        <div class="hardcover-rating" aria-label="${rating} von 5 Sternen aus ${count} Bewertungen bei Hardcover">
+          <strong><span aria-hidden="true">★</span> ${rating}</strong>
+          <span>${count} ${Number(book.ratingsCount) === 1 ? 'Bewertung' : 'Bewertungen'} bei Hardcover</span>
+        </div>
+      ` : '<p class="metadata-source">Metadaten von Hardcover</p>'}
+    </section>
   `;
 }
 
@@ -314,7 +363,10 @@ function hiddenManagerMarkup(hidden: Book[]) {
 
 function bindEvents() {
   document.querySelectorAll<HTMLElement>('[data-book-id]').forEach((element) => {
-    element.addEventListener('click', () => showSpotlight(Number(element.dataset.bookId)));
+    element.addEventListener('click', () => showSpotlight(Number(element.dataset.bookId), true));
+  });
+  document.querySelectorAll('.book-more').forEach((element) => {
+    element.addEventListener('click', expandSpotlight);
   });
   document.querySelector('.nav-next')?.addEventListener('click', nextShelf);
   document.querySelector('.nav-previous')?.addEventListener('click', previousShelf);
@@ -372,17 +424,26 @@ function centerSingleLineTitles() {
   });
 }
 
-function showSpotlight(id: number) {
+function showSpotlight(id: number, expanded = false) {
   spotlightBook = books.find((book) => book.id === id) || null;
+  spotlightExpanded = expanded;
   window.clearTimeout(spotlightTimer);
   render();
-  spotlightTimer = window.setTimeout(closeSpotlight, AUTO_CLOSE_MS);
+  if (!expanded) spotlightTimer = window.setTimeout(closeSpotlight, AUTO_CLOSE_MS);
   scheduleAmbient(AUTO_REPEAT_MS);
+}
+
+function expandSpotlight() {
+  if (!spotlightBook || spotlightExpanded) return;
+  spotlightExpanded = true;
+  window.clearTimeout(spotlightTimer);
+  render();
 }
 
 function closeSpotlight() {
   if (!spotlightBook) return;
   spotlightBook = null;
+  spotlightExpanded = false;
   window.clearTimeout(spotlightTimer);
   render();
 }
@@ -401,6 +462,7 @@ async function hideCurrentBook() {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   await loadVisibleBooks();
   spotlightBook = null;
+  spotlightExpanded = false;
   render();
   scheduleAmbient(AUTO_REPEAT_MS);
 }
@@ -411,6 +473,7 @@ async function openHiddenManager() {
   if (!response.ok) throw new Error(`HTTP ${response.status}`);
   hiddenBooks = (await response.json()).books;
   spotlightBook = null;
+  spotlightExpanded = false;
   render();
 }
 
@@ -454,6 +517,7 @@ function nextShelf() {
     historyIndex += 1;
   }
   spotlightBook = null;
+  spotlightExpanded = false;
   render();
   scheduleAmbient(AUTO_REPEAT_MS);
   scheduleShelfRotation();
@@ -464,6 +528,7 @@ function previousShelf() {
   historyIndex -= 1;
   shelfSeed = seedHistory[historyIndex];
   spotlightBook = null;
+  spotlightExpanded = false;
   render();
   scheduleAmbient(AUTO_REPEAT_MS);
   scheduleShelfRotation();

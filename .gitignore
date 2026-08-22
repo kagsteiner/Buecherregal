@@ -12,6 +12,7 @@ data/covers/
 # Local configuration and operating-system files
 .env
 .env.*
+.env~
 !.env.example
 .DS_Store
 npm-debug.log*

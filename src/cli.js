@@ -6,6 +6,7 @@ import { enrichPageCounts } from './metadata/enrich-pages.js';
 import { enrichSpineColors } from './metadata/enrich-colors.js';
 import { enrichOpenLibraryCovers } from './metadata/enrich-openlibrary-covers.js';
 import { enrichTypography } from './metadata/enrich-typography.js';
+import { enrichHardcoverMetadata } from './metadata/enrich-hardcover.js';
 
 function usage() {
   console.log(`Bücherregal
@@ -17,6 +18,7 @@ Aufrufe:
   npm run metadata:colors
   npm run metadata:covers
   npm run metadata:typography
+  npm run metadata:hardcover
   npm run books:list
 
 Datenbank: ${databasePath}`);
@@ -74,6 +76,17 @@ try {
     const limit = Number(process.env.COVER_LIMIT || 0) || undefined;
     const retry = process.env.COVER_RETRY === '1';
     const result = await enrichOpenLibraryCovers({ limit, retry });
+    console.log(JSON.stringify(result, null, 2));
+  } else if (command === 'enrich-hardcover') {
+    database.close();
+    databaseClosed = true;
+    const limit = Number(process.env.HARDCOVER_LIMIT || 0) || undefined;
+    const ids = (process.env.HARDCOVER_IDS || '')
+      .split(',')
+      .map((id) => Number(id.trim()))
+      .filter((id) => Number.isSafeInteger(id) && id > 0);
+    const retry = process.env.HARDCOVER_RETRY === '1';
+    const result = await enrichHardcoverMetadata({ limit, ids, retry });
     console.log(JSON.stringify(result, null, 2));
   } else {
     usage();

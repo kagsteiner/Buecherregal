@@ -31,5 +31,8 @@ export function migrate(database) {
   if (version < 6) {
     database.exec(readFileSync(join(projectRoot, 'migrations', '006_local_covers.sql'), 'utf8'));
   }
+  if (version < 7) {
+    database.exec(readFileSync(join(projectRoot, 'migrations', '007_hardcover_metadata.sql'), 'utf8'));
+  }
   database.exec('PRAGMA optimize');
 }

@@ -17,6 +17,7 @@ npm run metadata:pages
 npm run metadata:colors
 npm run metadata:covers
 npm run metadata:typography
+npm run metadata:hardcover
 npm run books:list
 npm run dev
 ```
@@ -116,6 +117,31 @@ Die Datenbank liegt standardmäßig unter `data/bookshelf.sqlite`. Mit `BOOKSHEL
 
 Die lokale Datenbank enthält private Bibliotheksdaten und wird deshalb nicht in
 Git eingecheckt. `npm run db:init` legt sie auf einem neuen Rechner wieder an.
+
+### Buchdetails von Hardcover
+
+`npm run metadata:hardcover` reichert die lokale SQLite-Datenbank mit Beschreibung,
+Genres, Stimmungen, Tags, Durchschnittsbewertung und vollständiger
+Bewertungsverteilung von Hardcover an. Der API-Schlüssel wird ausschließlich aus
+`HARDCOVER_API_KEY` in `.env` gelesen und weder in die Datenbank noch in Logs
+geschrieben. Die laufende Regal-App greift nicht auf Hardcover zu.
+
+Das Skript versucht zunächst eine exakte ASIN-Zuordnung und verwendet andernfalls
+eine konservative Titel-und-Autor-Suche. Unsichere Treffer werden nicht gespeichert;
+erfolglose Suchen werden markiert und bei normalen Folgeläufen übersprungen.
+
+Für einen Probelauf oder eine bewusste Wiederholung:
+
+```bash
+HARDCOVER_LIMIT=10 npm run metadata:hardcover
+HARDCOVER_RETRY=1 npm run metadata:hardcover
+HARDCOVER_IDS=217,514 npm run metadata:hardcover
+```
+
+Automatisch präsentierte Bücher zeigen zunächst die ruhige Coveransicht. Ein
+Antippen von Cover oder Titel öffnet die gespeicherten Hardcover-Details und stoppt
+den automatischen Schließtimer. Direkt aus dem Regal angetippte Bücher öffnen die
+Detailansicht sofort.
 
 ## Installation auf einem VPS
 

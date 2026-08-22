@@ -96,7 +96,10 @@ function listBooksWhere(databasePath, predicate) {
       spine_color, hidden_at, title_font_key, author_font_key, title_text_color,
       author_text_color, spine_layout, title_font_weight, author_font_weight,
       title_letter_spacing, author_letter_spacing, title_case, author_case,
-      typography_confidence, cover_local_path, cover_source, cover_match_confidence
+      typography_confidence, cover_local_path, cover_source, cover_match_confidence,
+      hardcover_book_id, hardcover_slug, hardcover_description, hardcover_genres,
+      hardcover_moods, hardcover_tags, hardcover_rating, hardcover_ratings_count,
+      hardcover_ratings_distribution, hardcover_match_confidence
     FROM books
     WHERE title <> '' AND ${predicate}
     ORDER BY title COLLATE NOCASE
@@ -132,8 +135,40 @@ function listBooksWhere(databasePath, predicate) {
       coverMatchConfidence: book.cover_match_confidence,
       hiddenAt: book.hidden_at,
       coverUrl: localCoverUrl(book.cover_local_path) || coverUrl(book.asin),
+      hardcoverBookId: book.hardcover_book_id,
+      hardcoverSlug: book.hardcover_slug,
+      description: book.hardcover_description,
+      genres: parseJsonArray(book.hardcover_genres),
+      moods: parseJsonArray(book.hardcover_moods),
+      tags: parseJsonArray(book.hardcover_tags),
+      rating: book.hardcover_rating,
+      ratingsCount: book.hardcover_ratings_count,
+      ratingsDistribution: parseRatingDistribution(book.hardcover_ratings_distribution),
+      hardcoverMatchConfidence: book.hardcover_match_confidence,
     };
   });
+}
+
+function parseJsonArray(value) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.filter((entry) => typeof entry === 'string') : [];
+  } catch {
+    return [];
+  }
+}
+
+function parseRatingDistribution(value) {
+  if (!value) return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed)
+      ? parsed.filter((entry) => Number.isFinite(entry?.rating) && Number.isFinite(entry?.count))
+      : [];
+  } catch {
+    return [];
+  }
 }
 
 export function listBooks(databasePath) {

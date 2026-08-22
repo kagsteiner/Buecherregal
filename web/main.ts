@@ -401,7 +401,7 @@ function spotlightMarkup(book: Book, expanded: boolean) {
   const coverMarkup = expanded
     ? `<div class="cover-wrap">${cover}</div>`
     : `<button class="cover-wrap book-more" type="button" aria-label="Mehr über ${escapeHtml(book.title)} erfahren">
-        ${cover}<span class="more-hint">Antippen für mehr</span>
+        ${cover}
       </button>`;
   const titleMarkup = expanded
     ? `<h2>${escapeHtml(book.title)}</h2>`
@@ -417,7 +417,7 @@ function spotlightMarkup(book: Book, expanded: boolean) {
             ${titleMarkup}
             <p class="focus-author">${escapeHtml(book.authors)}</p>
             <p class="focus-pages">${pages}</p>
-            ${expanded ? hardcoverDetailsMarkup(book) : '<p class="focus-more-copy">Cover oder Titel antippen, um mehr zu erfahren.</p>'}
+            ${expanded ? hardcoverDetailsMarkup(book) : '<button class="focus-more-link book-more" type="button">Mehr über dieses Buch <span aria-hidden="true">→</span></button>'}
           </div>
           <div class="focus-actions">
             <button class="put-back">Zurück ins Regal</button>

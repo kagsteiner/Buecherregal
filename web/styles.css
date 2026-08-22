@@ -136,14 +136,15 @@ footer { display: flex; justify-content: space-between; color: #786d62; font-siz
 .cover-fallback { display: flex; flex-direction: column; justify-content: space-between; padding: 12%; background: linear-gradient(135deg, rgba(255,255,255,.14), transparent 45%), var(--cover-color); color: white; }
 .cover-fallback strong { font: 400 clamp(1.4rem, 3.5vw, 2.8rem)/1.05 Iowan Old Style, Baskerville, Georgia, serif; }
 .cover-fallback span { font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; }
-.more-hint { position: absolute; z-index: 3; right: 8%; bottom: 6%; left: 8%; padding: 8px 10px; border: 1px solid rgba(255,255,255,.28); border-radius: 999px; color: #fff8ea; background: rgba(15,11,8,.68); font-size: clamp(.62rem, 1vw, .78rem); font-weight: 600; letter-spacing: .08em; text-transform: uppercase; backdrop-filter: blur(6px); }
 .book-details { min-width: 0; max-height: min(84vh, 760px); display: flex; flex-direction: column; }
 .book-details-scroll { min-height: 0; overflow-y: auto; padding: 3px 12px 3px 3px; scrollbar-color: #705d48 transparent; }
 .book-details h2 { margin: 0; font-size: clamp(2.4rem, 6vw, 5rem); line-height: .98; }
 .focus-title { display: block; padding: 0; border: 0; color: inherit; background: transparent; text-align: left; }
 .focus-author { margin: 22px 0 8px; color: #d7c7b2; font-size: clamp(1rem, 2vw, 1.35rem); }
 .focus-pages { color: #938575; }
-.focus-more-copy { margin: 18px 0 0; color: #9d8d79; font-size: .78rem; letter-spacing: .03em; }
+.focus-more-link { width: fit-content; margin: 15px 0 0; padding: 4px 0; border: 0; color: #b9a080; background: transparent; font-size: .78rem; letter-spacing: .025em; text-align: left; }
+.focus-more-link span { display: inline-block; margin-left: 4px; transition: transform .2s ease; }
+.focus-more-link:hover span, .focus-more-link:focus-visible span { transform: translateX(3px); }
 .focus-actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 22px; }
 .put-back, .hide-book, .hidden-close, .unhide-selected { padding: 11px 16px; border: 1px solid #816f57; border-radius: 999px; color: #dbc7aa; background: transparent; cursor: pointer; }
 .hide-book { border-color: #765348; color: #d4b2a4; touch-action: manipulation; }

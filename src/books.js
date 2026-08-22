@@ -9,13 +9,73 @@ export function deterministicPageCount(id) {
   return 300 + ((hash >>> 0) % 301);
 }
 
-export function cleanTitle(title) {
+const titleMarketingPatterns = [
+  /\bbestsell(?:er|ing)\b/i,
+  /\b(?:spiegel|sunday times|new york times|internationally|globally|worldwide)[- ]?bestseller\b/i,
+  /\b(?:winner|winning|award[- ]winning|award|ausgezeichnet|preisträger|nobelpreis)\b/i,
+  /\b(?:phenomenon|sensation|must[- ]read)\b/i,
+  /\b(?:from|by) the (?:internationally |globally |sunday times |new york times )?(?:bestselling )?author\b/i,
+  /\bvom autor (?:von|des|der)\b/i,
+  /\b(?:now (?:on|a|an|the)|inspired the|behind the).*(?:series|show|film|tv|bbc|hbo|netflix|prime|apple tv)\b/i,
+  /\b(?:verfilmung|verfilmt|tv-serie|fernsehserie)\b/i,
+  /^(?:the |an? )?(?:absolutely |emotionally |utterly |darkly |wickedly )?(?:gripping|thrilling|chilling|compulsive|unputdownable|uplifting|redemptive|spellbinding|spectacular|high-stakes|heartwarming|jaw-dropping)\b/i,
+  /^(?:enter|discover|perfect for|for fans of)\b/i,
+  /^(?:the )?(?:epic fantasy|epic space opera|science fiction adventure)\b.*\b(?:from|master|fans)\b/i,
+  /^(?:der|die|das|ein|eine)\s+(?:große|großartige|packende|spannende|spektakuläre|ultimative)\b/i,
+  /[»“”„][^»“”„]{8,}[»“”„]/,
+  /^['"][^'"]{8,}['"]?/,
+];
+
+function removeTitleParentheses(value) {
+  let result = value;
+  let previous;
+  do {
+    previous = result;
+    result = result.replace(/(^|\s+)\([^()]*\)\s*/g, '$1');
+  } while (result !== previous);
+  return result;
+}
+
+function titleContainsMarketing(value) {
+  return titleMarketingPatterns.some((pattern) => pattern.test(value));
+}
+
+function removeTitleMarketing(value) {
+  let title = removeTitleParentheses(value);
+  const pipe = title.search(/\s*[|｜]\s*/);
+  if (pipe >= 0) title = title.slice(0, pipe);
+
+  for (const match of title.matchAll(/:/g)) {
+    const suffix = title.slice(match.index + 1).trim().split(/\s[-–—]\s/, 1)[0];
+    if (titleContainsMarketing(suffix)) {
+      title = title.slice(0, match.index);
+      break;
+    }
+  }
+
+  for (const match of title.matchAll(/\s[-–—]\s/g)) {
+    const suffix = title.slice(match.index + 3).trim();
+    if (titleContainsMarketing(suffix)) {
+      title = title.slice(0, match.index);
+      break;
+    }
+  }
+
   return title
+    .replace(/\s+/g, ' ')
+    .replace(/\s+([,.;:!?])/g, '$1')
+    .replace(/(?:\s*[-–—|]\s*)+$/g, '')
+    .trim();
+}
+
+export function cleanTitle(title) {
+  const normalized = title
     .replace(/_for_Kindle$/i, '')
     .replaceAll('_', ' ')
     .replace(/\s*\(English Edition\)\s*/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+  return removeTitleMarketing(normalized) || normalized;
 }
 
 export function coverUrl(asin) {

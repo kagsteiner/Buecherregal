@@ -203,16 +203,10 @@ function caseClass(prefix: 'title' | 'author', value: Book['titleCase']) {
 }
 
 function spineTitle(title: string) {
-  const withoutEdition = title
-    .replace(/\s*\([^)]*(edition|ausgabe|kindle|book\s*\d+|english|deutsch)[^)]*\)\s*/gi, ' ')
-    .replace(/\s+/g, ' ')
-    .trim();
-  const mainTitle = withoutEdition.includes(':') && withoutEdition.split(':')[0].length >= 10
-    ? withoutEdition.split(':')[0].trim()
-    : withoutEdition;
-  if (mainTitle.length <= 54) return mainTitle;
-  const shortened = mainTitle.slice(0, 51).replace(/\s+\S*$/, '').trim();
-  return `${shortened || mainTitle.slice(0, 51)}…`;
+  const normalized = title.replace(/\s+/g, ' ').trim();
+  if (normalized.length <= 54) return normalized;
+  const shortened = normalized.slice(0, 51).replace(/\s+\S*$/, '').trim();
+  return `${shortened || normalized.slice(0, 51)}…`;
 }
 
 function render() {

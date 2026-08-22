@@ -27,6 +27,33 @@ test('document titles are cleaned for display', () => {
   assert.equal(cleanTitle('600 Hours of Edward (English Edition)'), '600 Hours of Edward');
 });
 
+test('display titles remove metadata and marketing without dropping real subtitles', () => {
+  assert.equal(
+    cleanTitle('A Game of Thrones: The bestselling classic epic fantasy series behind the award-winning HBO show (A Song Of Ice And Fire Book 1)'),
+    'A Game of Thrones',
+  );
+  assert.equal(
+    cleanTitle('A Crack in Creation: The New Power to Control Evolution'),
+    'A Crack in Creation: The New Power to Control Evolution',
+  );
+  assert.equal(
+    cleanTitle('A Higher Loyalty: Truth, Lies, and Leadership'),
+    'A Higher Loyalty: Truth, Lies, and Leadership',
+  );
+  assert.equal(
+    cleanTitle('Why We Believe in God(s): A Concise Guide to the Science of Faith (English Edition)'),
+    'Why We Believe in God(s): A Concise Guide to the Science of Faith',
+  );
+  assert.equal(
+    cleanTitle('Das Rätsel: Ein Roman | SPIEGEL-Bestseller und Pressestimmen'),
+    'Das Rätsel: Ein Roman',
+  );
+  assert.equal(
+    cleanTitle('Moralspektakel: Wie die richtige Haltung zum Statussymbol wurde - AUSGEZEICHNET MIT DEM TRACTATUS-PREIS'),
+    'Moralspektakel: Wie die richtige Haltung zum Statussymbol wurde',
+  );
+});
+
 test('cover URLs are only generated for plausible ASINs', () => {
   assert.match(coverUrl('B004TGTW3W'), /B004TGTW3W/);
   assert.equal(coverUrl('not-an-asin'), null);
